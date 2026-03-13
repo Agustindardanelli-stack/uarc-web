@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,9 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setLoading(true);
     setErrorMsg("");
+    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+    console.log("Email:", email);
+    console.log("Password length:", password.length);
 
     try {
       const response = await fetch(
@@ -37,11 +41,7 @@ export default function LoginPage() {
       }
 
       const data = await response.json();
-
-      // Guardar token
       localStorage.setItem("access_token", data.access_token);
-
-      // Redirigir al dashboard
       router.push("/dashboard");
     } catch (error) {
       console.error(error);
@@ -54,10 +54,12 @@ export default function LoginPage() {
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-800 to-sky-400 p-6">
       <div className="w-full max-w-sm bg-white rounded-lg shadow-lg p-8">
         <div className="flex justify-center mb-6">
-          <img
+          <Image
             src="/uarclogo.png"
             alt="Logo"
-            className="w-24 h-24 object-contain"
+            width={96}
+            height={96}
+            className="object-contain"
           />
         </div>
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">

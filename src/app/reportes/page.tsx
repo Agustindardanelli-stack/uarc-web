@@ -12,18 +12,12 @@ type MesData = {
 
 export default function ReportesPage() {
   const [meses, setMeses] = useState<MesData[]>([]);
-  const [token, setToken] = useState<string | null>(null);
   const [anio, setAnio] = useState(new Date().getFullYear());
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    setToken(token);
-    if (token) {
-      fetchIngresosEgresos(token);
-    }
-  }, [anio]);
+    if (!token) return;
 
-  const fetchIngresosEgresos = (token: string) => {
     fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/reportes/ingresos_egresos_mensuales?anio=${anio}`,
       {
@@ -37,7 +31,7 @@ export default function ReportesPage() {
         }
       })
       .catch(console.error);
-  };
+  }, [anio]);
 
   return (
     <div className="flex min-h-screen">

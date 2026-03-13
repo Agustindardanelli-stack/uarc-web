@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 
+type Usuario = {
+  id: number;
+  nombre: string;
+  email: string;
+};
+
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState<any[]>([]);
-  const token = "<PEGÁ TU TOKEN AQUÍ>";
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
       headers: {
         Authorization: `Bearer ${token}`,

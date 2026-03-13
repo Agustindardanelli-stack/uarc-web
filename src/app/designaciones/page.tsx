@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 
+interface Usuario {
+  id: number;
+  nombre: string;
+}
+
+interface Categoria {
+  id: number;
+  nombre: string;
+}
+
 export default function DesignacionesPage() {
-  const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [categorias, setCategorias] = useState<any[]>([]);
-  const [designaciones, setDesignaciones] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [form, setForm] = useState({
     usuarioId: "",
     fecha: new Date().toISOString().slice(0, 10),
@@ -15,32 +24,22 @@ export default function DesignacionesPage() {
     arbitros: [""],
   });
 
-  const token = localStorage.getItem("access_token");
-
   useEffect(() => {
-    if (token) {
-      // ✅ Cargar usuarios
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then(setUsuarios);
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
 
-      // ✅ Cargar categorías
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/categorias`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then(setCategorias);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data: Usuario[]) => setUsuarios(data));
 
-      // ✅ Cargar designaciones (si ya existe endpoint)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/designaciones`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then(setDesignaciones);
-    }
-  }, [token]);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/categorias`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data: Categoria[]) => setCategorias(data));
+  }, []);
 
   const handleArbitroChange = (index: number, value: string) => {
     const nuevos = [...form.arbitros];
@@ -53,6 +52,9 @@ export default function DesignacionesPage() {
   };
 
   const handleSubmit = () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
     const payload = {
       usuario_id: Number(form.usuarioId),
       fecha: form.fecha,
@@ -69,7 +71,7 @@ export default function DesignacionesPage() {
       },
       body: JSON.stringify(payload),
     }).then(() => {
-      window.location.reload(); // Actualizamos lista
+      window.location.reload();
     });
   };
 
@@ -82,7 +84,6 @@ export default function DesignacionesPage() {
         <div className="bg-gray-50 p-6 rounded shadow mb-8">
           <h2 className="text-xl font-bold mb-4">Nueva Designación</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Árbitro */}
             <select
               value={form.usuarioId}
               onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
@@ -96,7 +97,6 @@ export default function DesignacionesPage() {
               ))}
             </select>
 
-            {/* Fecha */}
             <input
               type="date"
               value={form.fecha}
@@ -104,7 +104,6 @@ export default function DesignacionesPage() {
               className="border p-2 rounded"
             />
 
-            {/* Partido */}
             <input
               type="text"
               placeholder="Partido"
@@ -113,12 +112,9 @@ export default function DesignacionesPage() {
               className="border p-2 rounded"
             />
 
-            {/* Categoría */}
             <select
               value={form.categoriaId}
-              onChange={(e) =>
-                setForm({ ...form, categoriaId: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, categoriaId: e.target.value })}
               className="border p-2 rounded"
             >
               <option value="">Seleccione Categoría</option>
@@ -130,7 +126,6 @@ export default function DesignacionesPage() {
             </select>
           </div>
 
-          {/* Árbitros adicionales */}
           <div className="mt-4">
             <label className="block mb-2 font-semibold">
               Árbitros asistentes:
@@ -162,7 +157,6 @@ export default function DesignacionesPage() {
           </button>
         </div>
 
-        {/* Tabla de Designaciones */}
         <div className="bg-gray-50 p-6 rounded shadow">
           <h2 className="text-xl font-bold mb-4">Listado de Designaciones</h2>
           <table className="w-full border-collapse">
@@ -175,19 +169,7 @@ export default function DesignacionesPage() {
                 <th className="p-2 border">Asistentes</th>
               </tr>
             </thead>
-            {/* <tbody>
-              {designaciones.map((d: any) => (
-                <tr key={d.id} className="hover:bg-gray-100">
-                  <td className="p-2 border">
-                    {new Date(d.fecha).toLocaleDateString()}
-                  </td>
-                  <td className="p-2 border">{d.partido}</td>
-                  <td className="p-2 border">{d.usuario?.nombre}</td>
-                  <td className="p-2 border">{d.categoria?.nombre}</td>
-                  <td className="p-2 border">{d.arbitros?.join(", ")}</td>
-                </tr>
-              ))}
-            </tbody> */}
+            <tbody />
           </table>
         </div>
       </main>
