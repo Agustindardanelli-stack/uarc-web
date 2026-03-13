@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
+import Image from "next/image";
 const menuItems = [
   { title: "Home", path: "/dashboard" },
   { title: "Pagos", path: "/pagos" },
@@ -19,12 +19,14 @@ export default function Sidebar() {
   return (
     <aside className="bg-blue-800 text-white w-56 min-h-screen flex flex-col">
       <div className="text-center py-6">
-        <img
-          src="/uarclogo.png"
-          className="mx-auto mb-4 w-24"
-          alt="UARC Logo"
-        />
-        <h1 className="font-bold text-lg">UARC Tesorería</h1>
+        <Image
+        src="/uarclogo.png"
+        alt="UARC Logo"
+        width={96}
+        height={96}
+        className="mx-auto mb-4"
+      />
+              <h1 className="font-bold text-lg">UARC Tesorería</h1>
       </div>
       <nav className="flex-1 px-4">
         {menuItems.map((item) => (
