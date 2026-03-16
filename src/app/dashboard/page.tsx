@@ -45,7 +45,22 @@ export default function DashboardPage() {
       .then((res) => res.json())
       .then((data: Movimiento[]) => setMovimientos(data));
   }, []);
+  function formatCurrency(value: string | number | undefined): string {
+  if (!value && value !== 0) return "$0,00";
 
+  const num = typeof value === "string"
+    ? parseFloat(value.replace(/[$,]/g, ""))
+    : value;
+
+  if (isNaN(num)) return "$0,00";
+
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+}
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -53,21 +68,10 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-8">Home</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card
-            title="Ingresos Totales"
-            value={balance?.ingresos || "$0.00"}
-            color="text-green-600"
-          />
-          <Card
-            title="Egresos Totales"
-            value={balance?.egresos || "$0.00"}
-            color="text-red-600"
-          />
-          <Card
-            title="Saldo Actual"
-            value={balance?.saldo || "$0.00"}
-            color="text-blue-600"
-          />
+          
+          <Card title="Ingresos Totales" value={formatCurrency(balance?.ingresos)} color="text-green-600" />
+          <Card title="Egresos Totales" value={formatCurrency(balance?.egresos)} color="text-red-600" />
+          <Card title="Saldo Actual" value={formatCurrency(balance?.saldo)} color="text-blue-600" />
         </div>
 
         <div className="bg-gray-50 p-6 rounded shadow">
