@@ -66,6 +66,25 @@ export default function DashboardPage() {
       <Sidebar />
       <main className="flex-1 p-8 bg-white text-gray-900">
         <h1 className="text-3xl font-bold mb-8">Home</h1>
+        <button
+    onClick={() => {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/partidas/recalcular-saldos`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          alert(data.message);
+          window.location.reload();
+        })
+        .catch(() => alert("Error al recalcular saldos"));
+    }}
+    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow"
+  >
+    🔄 Recalcular Saldos
+  </button>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           

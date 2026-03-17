@@ -10,7 +10,7 @@ const menuItems = [
   { title: "Importes", path: "/importes" },
   { title: "Reportes", path: "/reportes" },
   { title: "Config. Email", path: "/config-email" },
-  { title: "Agregar Socio", path: "/socios/nuevo" },
+  { title: "Agregar Socio", path: "/usuarios" },
   { title: "Designaciones", path: "/designaciones" },
   { title: "Planilla de Recibos", path: "/planilla-recibos" },
 ];
