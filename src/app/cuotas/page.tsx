@@ -73,7 +73,7 @@ export default function CuotasPage() {
   const [cuotasFiltradas, setCuotasFiltradas] = useState<Cuota[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedCuota, setSelectedCuota] = useState<Cuota | null>(null);
-  const [loading, setLoading] = useState(false);
+  
 
   const [form, setForm] = useState<Form>({
     usuarioId: "",
