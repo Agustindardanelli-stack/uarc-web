@@ -39,7 +39,7 @@ export default function DashboardPage() {
       .then((res) => res.json())
       .then((data: Balance) => setBalance(data));
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/partidas?skip=0&limit=50`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/partidas?skip=0&limit=100`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
