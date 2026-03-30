@@ -125,8 +125,12 @@ export default function DashboardPage() {
                   >
                     <td className="px-4 py-3">{m.id}</td>
                     <td className="px-4 py-3">
-                      {m.fecha ? new Date(m.fecha).toLocaleDateString() : ""}
-                    </td>
+  {(() => {
+    const [year, month, day] = m.fecha.split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day))
+      .toLocaleDateString("es-AR");
+  })()}
+</td>
                     <td className="px-4 py-3">
                       {m.ingreso > 0 ? (
                         <span className="text-green-600 font-medium">INGRESO</span>
