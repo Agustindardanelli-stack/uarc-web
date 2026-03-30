@@ -45,58 +45,88 @@ export default function DashboardPage() {
       .then((res) => res.json())
       .then((data: Movimiento[]) => setMovimientos(data));
   }, []);
+
   function formatCurrency(value: string | number | undefined): string {
-  if (!value && value !== 0) return "$0,00";
+    if (!value && value !== 0) return "$0,00";
 
-  const num = typeof value === "string"
-    ? parseFloat(value.replace(/[$,]/g, ""))
-    : value;
+    const num =
+      typeof value === "string"
+        ? parseFloat(value.replace(/[$,]/g, ""))
+        : value;
 
-  if (isNaN(num)) return "$0,00";
+    if (isNaN(num)) return "$0,00";
 
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-}
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  }
+
+  // ✅ FUNCIÓN CORRECTA PARA FECHAS (SIN PROBLEMA DE TIMEZONE)
+  function formatDate(fecha: string): string {
+    if (!fecha) return "-";
+
+    const [year, month, day] = fecha.split("-");
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+    return date.toLocaleDateString("es-AR");
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8 bg-white text-gray-900">
         <h1 className="text-3xl font-bold mb-8">Home</h1>
+
         <button
-    onClick={() => {
-      const token = localStorage.getItem("access_token");
-      if (!token) return;
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/partidas/recalcular-saldos`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          alert(data.message);
-          window.location.reload();
-        })
-        .catch(() => alert("Error al recalcular saldos"));
-    }}
-    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow"
-  >
-    🔄 Recalcular Saldos
-  </button>
+          onClick={() => {
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
+
+            fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/partidas/recalcular-saldos`,
+              {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            )
+              .then((res) => res.json())
+              .then((data) => {
+                alert(data.message);
+                window.location.reload();
+              })
+              .catch(() => alert("Error al recalcular saldos"));
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow"
+        >
+          🔄 Recalcular Saldos
+        </button>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          
-          <Card title="Ingresos Totales" value={formatCurrency(balance?.ingresos)} color="text-green-600" />
-          <Card title="Egresos Totales" value={formatCurrency(balance?.egresos)} color="text-red-600" />
-          <Card title="Saldo Actual" value={formatCurrency(balance?.saldo)} color="text-blue-600" />
+          <Card
+            title="Ingresos Totales"
+            value={formatCurrency(balance?.ingresos)}
+            color="text-green-600"
+          />
+          <Card
+            title="Egresos Totales"
+            value={formatCurrency(balance?.egresos)}
+            color="text-red-600"
+          />
+          <Card
+            title="Saldo Actual"
+            value={formatCurrency(balance?.saldo)}
+            color="text-blue-600"
+          />
         </div>
 
         <div className="bg-gray-50 p-6 rounded shadow">
           <h2 className="text-xl font-bold mb-4">
             Últimos Movimientos (Libro Diario)
           </h2>
+
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm text-gray-900">
               <thead className="bg-blue-600 text-white uppercase text-xs">
@@ -113,6 +143,7 @@ export default function DashboardPage() {
                   <th className="px-4 py-3 text-left">Descripción</th>
                 </tr>
               </thead>
+
               <tbody>
                 {movimientos.map((m, idx) => (
                   <tr
@@ -124,33 +155,50 @@ export default function DashboardPage() {
                     }
                   >
                     <td className="px-4 py-3">{m.id}</td>
+
+                    {/* ✅ ACÁ ESTÁ EL FIX */}
                     <td className="px-4 py-3">
-  {(() => {
-    const [year, month, day] = m.fecha.split("-");
-    return new Date(Number(year), Number(month) - 1, Number(day))
-      .toLocaleDateString("es-AR");
-  })()}
-</td>
+                      {formatDate(m.fecha)}
+                    </td>
+
                     <td className="px-4 py-3">
                       {m.ingreso > 0 ? (
-                        <span className="text-green-600 font-medium">INGRESO</span>
+                        <span className="text-green-600 font-medium">
+                          INGRESO
+                        </span>
                       ) : (
-                        <span className="text-red-600 font-medium">EGRESO</span>
+                        <span className="text-red-600 font-medium">
+                          EGRESO
+                        </span>
                       )}
                     </td>
+
                     <td className="px-4 py-3">{m.detalle || "-"}</td>
-                    <td className="px-4 py-3">{m.recibo_factura || "-"}</td>
+                    <td className="px-4 py-3">
+                      {m.recibo_factura || "-"}
+                    </td>
+
                     <td className="px-4 py-3 text-green-600">
                       {m.ingreso > 0 ? `$${m.ingreso.toFixed(2)}` : "-"}
                     </td>
+
                     <td className="px-4 py-3 text-red-600">
                       {m.egreso > 0 ? `$${m.egreso.toFixed(2)}` : "-"}
                     </td>
+
                     <td className="px-4 py-3 font-semibold">
-                      {m.saldo !== undefined ? `$${m.saldo.toFixed(2)}` : "-"}
+                      {m.saldo !== undefined
+                        ? `$${m.saldo.toFixed(2)}`
+                        : "-"}
                     </td>
-                    <td className="px-4 py-3">{m.usuario?.nombre || "-"}</td>
-                    <td className="px-4 py-3">{m.descripcion || "-"}</td>
+
+                    <td className="px-4 py-3">
+                      {m.usuario?.nombre || "-"}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {m.descripcion || "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
