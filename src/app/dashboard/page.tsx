@@ -70,3 +70,6 @@ function Card({
     </div>
   );
 }
+
+export default Page;
+export {Card} ;
