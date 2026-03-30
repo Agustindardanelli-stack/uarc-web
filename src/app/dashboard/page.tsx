@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface Movimiento {
   id: number;
@@ -10,13 +10,18 @@ interface Movimiento {
   monto: number;
 }
 
-interface Props {
-  movimientos: Movimiento[];
-}
+const Page = () => {
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
 
-const Page = ({ movimientos }: Props) => {
+  // 🔥 Traer datos (ajustá la URL a tu API)
+  useEffect(() => {
+    fetch(process.env.NEXT_PUBLIC_API_URL + '/movimientos')
+      .then(res => res.json())
+      .then(data => setMovimientos(data))
+      .catch(err => console.error(err));
+  }, []);
 
-  // ✅ FORMATEADOR CORRECTO (SIN DATE)
+  // ✅ FORMATEADOR SIN BUG
   const formatFecha = (fecha: string) => {
     if (!fecha) return '';
     return fecha.split('-').reverse().join('/');
@@ -24,6 +29,15 @@ const Page = ({ movimientos }: Props) => {
 
   return (
     <div className="container mt-4">
+      
+      {/* CARDS */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <Card title="Ingresos" value="$0" color="text-green-600" />
+        <Card title="Egresos" value="$0" color="text-red-600" />
+        <Card title="Balance" value="$0" color="text-blue-600" />
+      </div>
+
+      {/* TABLA */}
       <table className="table table-bordered">
         <thead>
           <tr>
@@ -39,10 +53,7 @@ const Page = ({ movimientos }: Props) => {
           {movimientos.map((m) => (
             <tr key={m.id}>
               <td>{m.id}</td>
-
-              {/* 🔥 ACÁ ESTÁ EL FIX */}
               <td>{formatFecha(m.fecha)}</td>
-
               <td>{m.tipo}</td>
               <td>{m.descripcion}</td>
               <td>${m.monto.toFixed(2)}</td>
@@ -52,7 +63,7 @@ const Page = ({ movimientos }: Props) => {
       </table>
     </div>
   );
-}
+};
 
 function Card({
   title,
