@@ -72,4 +72,3 @@ function Card({
 }
 
 export default Page;
-export {Card} ;
