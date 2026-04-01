@@ -381,19 +381,38 @@ export default function CuotasPage() {
     }
   };
 
-  const handleGenerateRecibo = (id: number) => {
+  const handleGenerateRecibo = async (id: number) => {
     if (!token) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas/${id}/generar-recibo`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `recibo_cuota_${id}.pdf`;
-        a.click();
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas/${id}/generar-recibo`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return alert(`Error al generar PDF: ${err.detail || `Status ${res.status}`}`);
+      }
+
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("pdf")) {
+        const text = await res.text();
+        console.error("Respuesta inesperada del servidor:", text);
+        return alert("Error: el servidor no devolvió un PDF válido.");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recibo_cuota_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Error al generar recibo:", e);
+      alert(`Error de conexión al generar el PDF.`);
+    }
   };
 
   const handleSendEmail = (cuota: Cuota) => {

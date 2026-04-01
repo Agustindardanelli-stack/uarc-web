@@ -175,15 +175,13 @@ export default function DashboardPage() {
                       {m.recibo_factura || "-"}
                     </td>
                     <td className="px-4 py-3 text-green-600">
-                      {m.ingreso > 0 ? `$${m.ingreso.toFixed(2)}` : "-"}
+                      {formatCurrency(m.ingreso)}
                     </td>
                     <td className="px-4 py-3 text-red-600">
-                      {m.egreso > 0 ? `$${m.egreso.toFixed(2)}` : "-"}
+                      {formatCurrency(m.egreso)}
                     </td>
                     <td className="px-4 py-3 font-semibold">
-                      {m.saldo !== undefined
-                        ? `$${m.saldo.toFixed(2)}`
-                        : "-"}
+                      {formatCurrency(m.saldo)}
                     </td>
                     <td className="px-4 py-3">
                       {m.usuario?.nombre || "-"}
