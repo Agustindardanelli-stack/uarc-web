@@ -231,7 +231,7 @@ export default function CuotasPage() {
           }
         } else if (!cuotaExistente) {
           // No existe la cuota → crearla y pagarla en un solo paso
-          const resCreate = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas`, {
+          const resCreate = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas?no_generar_movimiento=true`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
