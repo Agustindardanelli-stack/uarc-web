@@ -410,7 +410,7 @@ export default function HomePage() {
             <div className="nav-logo-img">
               <Image
                 src="/UarcLogo.png"
-                alt="UARC"
+                alt="LOGO"
                 width={44}
                 height={44}
                 style={{ objectFit: "contain" }}
