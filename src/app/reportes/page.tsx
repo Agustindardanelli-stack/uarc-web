@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
-// ---------------------------------------------------------------------------
-// Tipos
-// ---------------------------------------------------------------------------
+import { apiGet, apiGetBlob, ApiError } from "@/lib/api";
+import { formatCurrency, downloadBlob } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
 
 type MesData = {
   mes: number;
@@ -21,25 +20,10 @@ type Balance = {
   saldo: number;
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatARS(value: number): string {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  }).format(value ?? 0);
-}
-
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
-
 export default function ReportesPage() {
+  const { toast } = useToast();
   const anioActual = new Date().getFullYear();
-  const mesActual = new Date().getMonth(); // 0-indexed
+  const mesActual = new Date().getMonth();
 
   const [meses, setMeses] = useState<MesData[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -50,39 +34,24 @@ export default function ReportesPage() {
   const [anioPdf, setAnioPdf] = useState(anioActual);
   const [generandoPdf, setGenerandoPdf] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Fetch
-  // ---------------------------------------------------------------------------
-  
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
-    
+
     setCargando(true);
     setError(null);
-    
-    Promise.all([
-      fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/reportes/ingresos_egresos_mensuales?anio=${anio}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ).then((r) => r.json()),
 
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/reportes/balance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+    Promise.all([
+      apiGet<{ datos: MesData[] }>(`/reportes/ingresos_egresos_mensuales?anio=${anio}`, token),
+      apiGet<Balance>("/reportes/balance", token),
     ])
       .then(([dataMeses, dataBalance]) => {
-      
         if (dataMeses?.datos) setMeses(dataMeses.datos);
         if (dataBalance) setBalance(dataBalance);
       })
       .catch(() => setError("No se pudieron cargar los datos del reporte."))
       .finally(() => setCargando(false));
   }, [anio]);
-
-  // ---------------------------------------------------------------------------
-  // Cálculos derivados
-  // ---------------------------------------------------------------------------
 
   const totalIngresos = meses.reduce((s, m) => s + (m.ingresos ?? 0), 0);
   const totalEgresos = meses.reduce((s, m) => s + (m.egresos ?? 0), 0);
@@ -95,32 +64,23 @@ export default function ReportesPage() {
     (best, m) => ((m.balance ?? 0) > (best?.balance ?? -Infinity) ? m : best),
     mesesConDatos[0] ?? null
   );
+
   const handleGenerarPdf = async () => {
-        const token = localStorage.getItem("access_token");
-        if (!token) return;
-        setGenerandoPdf(true);
-        try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/reportes/libro-diario-pdf?mes=${mesPdf}&anio=${anioPdf}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          if (!res.ok) return alert("Error al generar el PDF");
-          const blob = await res.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `libro_diario_${mesPdf}_${anioPdf}.pdf`;
-          a.click();
-          window.URL.revokeObjectURL(url);
-        } catch {
-          alert("Error de conexión al generar el PDF");
-        } finally {
-          setGenerandoPdf(false);
-        }
-      };
-    // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    setGenerandoPdf(true);
+    try {
+      const blob = await apiGetBlob(
+        `/reportes/libro-diario-pdf?mes=${mesPdf}&anio=${anioPdf}`,
+        token
+      );
+      downloadBlob(blob, `libro_diario_${mesPdf}_${anioPdf}.pdf`);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error de conexión al generar el PDF", "error");
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -128,7 +88,6 @@ export default function ReportesPage() {
 
       <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
 
-        {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reportes Financieros</h1>
@@ -149,18 +108,16 @@ export default function ReportesPage() {
           </div>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
           </div>
         )}
 
-        {/* Tarjetas resumen */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Ingresos del año"
-            value={formatARS(totalIngresos)}
+            value={formatCurrency(totalIngresos)}
             color="green"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +127,7 @@ export default function ReportesPage() {
           />
           <StatCard
             label="Egresos del año"
-            value={formatARS(totalEgresos)}
+            value={formatCurrency(totalEgresos)}
             color="red"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +137,7 @@ export default function ReportesPage() {
           />
           <StatCard
             label="Balance del año"
-            value={formatARS(totalBalance)}
+            value={formatCurrency(totalBalance)}
             color={totalBalance >= 0 ? "blue" : "red"}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +147,7 @@ export default function ReportesPage() {
           />
           <StatCard
             label="Saldo actual (histórico)"
-            value={balance ? formatARS(balance.saldo) : "—"}
+            value={balance ? formatCurrency(balance.saldo) : "—"}
             color={balance && balance.saldo >= 0 ? "blue" : "red"}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +157,6 @@ export default function ReportesPage() {
           />
         </div>
 
-        {/* Gráfico de barras */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-6">
             Ingresos vs Egresos — {anio}
@@ -214,7 +170,6 @@ export default function ReportesPage() {
             </div>
           ) : (
             <>
-              {/* Leyenda */}
               <div className="flex gap-6 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-3 h-3 rounded-sm bg-green-500" />
@@ -226,10 +181,8 @@ export default function ReportesPage() {
                 </div>
               </div>
 
-              {/* Barras */}
               <div className="overflow-x-auto">
                 <div className="flex items-end gap-2 min-w-[600px] h-48 pb-6 relative">
-                  {/* Líneas guía */}
                   {[25, 50, 75, 100].map((pct) => (
                     <div
                       key={pct}
@@ -246,17 +199,15 @@ export default function ReportesPage() {
                     return (
                       <div key={m.mes} className="flex-1 flex flex-col items-center gap-1 group">
                         <div className="flex items-end gap-0.5 w-full justify-center" style={{ height: "168px" }}>
-                          {/* Barra ingreso */}
                           <div
                             className="w-5 bg-green-500 rounded-t transition-all duration-500 group-hover:opacity-80"
                             style={{ height: `${ingPct}%` }}
-                            title={`Ingresos: ${formatARS(m.ingresos)}`}
+                            title={`Ingresos: ${formatCurrency(m.ingresos)}`}
                           />
-                          {/* Barra egreso */}
                           <div
                             className="w-5 bg-red-400 rounded-t transition-all duration-500 group-hover:opacity-80"
                             style={{ height: `${egPct}%` }}
-                            title={`Egresos: ${formatARS(m.egresos)}`}
+                            title={`Egresos: ${formatCurrency(m.egresos)}`}
                           />
                         </div>
                         <span className={`text-xs truncate max-w-full text-center ${esActual ? "font-bold text-blue-600" : "text-gray-500"}`}>
@@ -271,7 +222,6 @@ export default function ReportesPage() {
           )}
         </div>
 
-        {/* Tabla detallada */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800">Detalle mensual — {anio}</h2>
@@ -323,15 +273,15 @@ export default function ReportesPage() {
                           </div>
                         </td>
                         <td className={`px-6 py-3 text-right font-mono ${tieneDatos ? "text-green-700" : "text-gray-300"}`}>
-                          {tieneDatos ? formatARS(ingreso) : "—"}
+                          {tieneDatos ? formatCurrency(ingreso) : "—"}
                         </td>
                         <td className={`px-6 py-3 text-right font-mono ${tieneDatos ? "text-red-600" : "text-gray-300"}`}>
-                          {tieneDatos ? formatARS(egreso) : "—"}
+                          {tieneDatos ? formatCurrency(egreso) : "—"}
                         </td>
                         <td className={`px-6 py-3 text-right font-mono font-semibold ${
                           !tieneDatos ? "text-gray-300" : bal >= 0 ? "text-blue-700" : "text-red-600"
                         }`}>
-                          {tieneDatos ? (bal >= 0 ? "+" : "") + formatARS(bal) : "—"}
+                          {tieneDatos ? (bal >= 0 ? "+" : "") + formatCurrency(bal) : "—"}
                         </td>
                         <td className="px-6 py-3">
                           {tieneDatos ? (
@@ -350,14 +300,13 @@ export default function ReportesPage() {
                   })}
                 </tbody>
 
-                {/* Totales */}
                 <tfoot>
                   <tr className="bg-gray-900 text-white text-sm font-semibold">
                     <td className="px-6 py-4">Total {anio}</td>
-                    <td className="px-6 py-4 text-right font-mono text-green-300">{formatARS(totalIngresos)}</td>
-                    <td className="px-6 py-4 text-right font-mono text-red-300">{formatARS(totalEgresos)}</td>
+                    <td className="px-6 py-4 text-right font-mono text-green-300">{formatCurrency(totalIngresos)}</td>
+                    <td className="px-6 py-4 text-right font-mono text-red-300">{formatCurrency(totalEgresos)}</td>
                     <td className={`px-6 py-4 text-right font-mono ${totalBalance >= 0 ? "text-blue-300" : "text-red-300"}`}>
-                      {totalBalance >= 0 ? "+" : ""}{formatARS(totalBalance)}
+                      {totalBalance >= 0 ? "+" : ""}{formatCurrency(totalBalance)}
                     </td>
                     <td className="px-6 py-4" />
                   </tr>
@@ -366,61 +315,61 @@ export default function ReportesPage() {
             </div>
           )}
         </div>
-          {/* Generador de PDF */}
-<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-  <h2 className="text-lg font-semibold text-gray-800 mb-1">Libro Diario mensual</h2>
-  <p className="text-sm text-gray-500 mb-5">
-    Generá el informe completo de movimientos de un mes para presentar a los socios.
-  </p>
 
-  <div className="flex flex-wrap items-end gap-4">
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">Mes</label>
-      <select
-        value={mesPdf}
-        onChange={(e) => setMesPdf(Number(e.target.value))}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {["Enero","Febrero","Marzo","Abril","Mayo","Junio",
-          "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-        ].map((m, i) => (
-          <option key={i + 1} value={i + 1}>{m}</option>
-        ))}
-      </select>
-    </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-1">Libro Diario mensual</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Generá el informe completo de movimientos de un mes para presentar a los socios.
+          </p>
 
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">Año</label>
-      <select
-        value={anioPdf}
-        onChange={(e) => setAnioPdf(Number(e.target.value))}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {[anioActual - 1, anioActual, anioActual + 1].map((a) => (
-          <option key={a} value={a}>{a}</option>
-        ))}
-      </select>
-    </div>
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Mes</label>
+              <select
+                value={mesPdf}
+                onChange={(e) => setMesPdf(Number(e.target.value))}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+                ].map((m, i) => (
+                  <option key={i + 1} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
 
-    <button
-      onClick={handleGenerarPdf}
-      disabled={generandoPdf}
-      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-lg text-sm transition-colors"
-    >
-      {generandoPdf ? (
-        <>Generando...</>
-      ) : (
-        <>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Descargar PDF
-        </>
-      )}
-    </button>
-  </div>
-</div>
-        {/* Nota al pie */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Año</label>
+              <select
+                value={anioPdf}
+                onChange={(e) => setAnioPdf(Number(e.target.value))}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {[anioActual - 1, anioActual, anioActual + 1].map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleGenerarPdf}
+              disabled={generandoPdf}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-lg text-sm transition-colors"
+            >
+              {generandoPdf ? (
+                <>Generando...</>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Descargar PDF
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
         <p className="text-xs text-gray-400 text-center pb-4">
           Los datos reflejan las partidas contables registradas en el sistema · UARC Tesorería
         </p>
@@ -428,10 +377,6 @@ export default function ReportesPage() {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Componente StatCard
-// ---------------------------------------------------------------------------
 
 type StatCardProps = {
   label: string;

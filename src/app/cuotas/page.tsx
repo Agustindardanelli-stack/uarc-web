@@ -2,26 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
-// ---------------------------------------------------------------------------
-// Tipos
-// ---------------------------------------------------------------------------
-
-interface Usuario {
-  id: number;
-  nombre: string;
-  email?: string;
-}
-
-interface Cuota {
-  id: number;
-  usuario_id: number;
-  fecha: string;
-  monto: number;
-  pagado: boolean;
-  monto_pagado?: number;
-  usuario?: Usuario;
-}
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
+import type { Usuario, Cuota } from "@/lib/types";
 
 interface Form {
   usuarioId: string;
@@ -40,17 +24,12 @@ interface PagoForm {
   montoPagado: string;
 }
 
-// Estado por árbitro en el cobro mensual
 interface EstadoCobro {
   [usuarioId: number]: {
     monto: string;
-    pagando: boolean; // true = lo marcó para pagar ahora
+    pagando: boolean;
   };
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 const MESES = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -62,18 +41,14 @@ function mesAnioActual() {
   return { mes: hoy.getMonth(), anio: hoy.getFullYear() };
 }
 
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
-
 export default function CuotasPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"form" | "list" | "search" | "cobro">("form");
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
   const [cuotasFiltradas, setCuotasFiltradas] = useState<Cuota[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedCuota, setSelectedCuota] = useState<Cuota | null>(null);
-  
 
   const [form, setForm] = useState<Form>({
     usuarioId: "",
@@ -90,7 +65,6 @@ export default function CuotasPage() {
   const [pagoForm, setPagoForm] = useState<PagoForm>({ cuotaId: 0, montoPagado: "" });
   const [token, setToken] = useState<string | null>(null);
 
-  // --- Cobro mensual ---
   const { mes: mesHoy, anio: anioHoy } = mesAnioActual();
   const [mesCobro, setMesCobro] = useState(mesHoy);
   const [anioCobro, setAnioCobro] = useState(anioHoy);
@@ -98,24 +72,13 @@ export default function CuotasPage() {
   const [estadoCobro, setEstadoCobro] = useState<EstadoCobro>({});
   const [guardando, setGuardando] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Carga de datos
-  // ---------------------------------------------------------------------------
-
   const fetchData = useCallback((tkn: string) => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
-      headers: { Authorization: `Bearer ${tkn}` },
-    })
-      .then((res) => res.json())
-      .then((data: Usuario[]) =>
-        setUsuarios(data.sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      );
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas`, {
-      headers: { Authorization: `Bearer ${tkn}` },
-    })
-      .then((res) => res.json())
-      .then((data: Cuota[]) => setCuotas(data));
+    apiGet<Usuario[]>("/usuarios", tkn)
+      .then((data) => setUsuarios(data.sort((a, b) => a.nombre.localeCompare(b.nombre))))
+      .catch(() => {});
+    apiGet<Cuota[]>("/cuotas", tkn)
+      .then(setCuotas)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -126,7 +89,6 @@ export default function CuotasPage() {
     }
   }, [fetchData]);
 
-  // Cuando cambia el mes/año de cobro, inicializar el estado de cada árbitro
   useEffect(() => {
     if (!usuarios.length) return;
     const inicial: EstadoCobro = {};
@@ -137,11 +99,6 @@ export default function CuotasPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarios, mesCobro, anioCobro]);
 
-  // ---------------------------------------------------------------------------
-  // Helpers cobro mensual
-  // ---------------------------------------------------------------------------
-
-  // Devuelve la cuota de un usuario para el mes/año seleccionado (si existe)
   function cuotaDelMes(usuarioId: number): Cuota | undefined {
     return cuotas.find((c) => {
       const d = new Date(c.fecha);
@@ -182,7 +139,6 @@ export default function CuotasPage() {
     setEstadoCobro((prev) => {
       const nuevo = { ...prev };
       Object.keys(nuevo).forEach((id) => {
-        // Solo marcar los que aún no tienen cuota pagada este mes
         const cuota = cuotaDelMes(Number(id));
         if (!cuota?.pagado) {
           nuevo[Number(id)] = { ...nuevo[Number(id)], pagando: true };
@@ -192,16 +148,12 @@ export default function CuotasPage() {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Guardar cobro mensual
-  // ---------------------------------------------------------------------------
-
   async function handleGuardarCobro() {
     if (!token) return;
 
     const aProcesar = usuarios.filter((u) => estadoCobro[u.id]?.pagando);
     if (!aProcesar.length) {
-      alert("No marcaste a ningún árbitro para cobrar.");
+      toast("No marcaste a ningún árbitro para cobrar.", "error");
       return;
     }
 
@@ -220,57 +172,35 @@ export default function CuotasPage() {
 
       try {
         if (cuotaExistente && !cuotaExistente.pagado) {
-          // Ya existe la cuota pero no está pagada → pagarla
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/cuotas/${cuotaExistente.id}/pagar?monto_pagado=${monto}`,
-            { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
+          await apiPut(
+            `/cuotas/${cuotaExistente.id}/pagar?monto_pagado=${monto}`,
+            token
           );
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            errores.push(`${usuario.nombre}: ${err.detail || "error al pagar"}`);
-          }
         } else if (!cuotaExistente) {
-          // No existe la cuota → crearla y pagarla en un solo paso
-          const resCreate = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas?no_generar_movimiento=true`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          const nuevaCuota = await apiPost<Cuota>(
+            "/cuotas?no_generar_movimiento=true",
+            token,
+            {
               usuario_id: usuario.id,
               fecha: fechaCobro,
               monto,
               pagado: false,
               monto_pagado: 0,
-            }),
-          });
-          if (!resCreate.ok) {
-            const err = await resCreate.json().catch(() => ({}));
-            errores.push(`${usuario.nombre}: ${err.detail || "error al crear"}`);
-            continue;
-          }
-          const nuevaCuota: Cuota = await resCreate.json();
-
-          const resPago = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/cuotas/${nuevaCuota.id}/pagar?monto_pagado=${monto}`,
-            { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
+            }
           );
-          if (!resPago.ok) {
-            const err = await resPago.json().catch(() => ({}));
-            errores.push(`${usuario.nombre}: ${err.detail || "error al pagar"}`);
-          }
+          await apiPut(
+            `/cuotas/${nuevaCuota.id}/pagar?monto_pagado=${monto}`,
+            token
+          );
         }
-        // Si ya estaba pagada, no hacemos nada
-      } catch {
-        errores.push(`${usuario.nombre}: error de conexión`);
+      } catch (e) {
+        errores.push(`${usuario.nombre}: ${e instanceof ApiError ? e.message : "error de conexión"}`);
       }
     }
 
     setGuardando(false);
     fetchData(token);
 
-    // Desmarcar los que se procesaron correctamente
     setEstadoCobro((prev) => {
       const nuevo = { ...prev };
       aProcesar.forEach((u) => {
@@ -282,20 +212,16 @@ export default function CuotasPage() {
     });
 
     if (errores.length) {
-      alert(`Completado con errores:\n${errores.join("\n")}`);
+      toast(`Completado con errores:\n${errores.join("\n")}`, "error");
     } else {
-      alert(`${aProcesar.length} cobro(s) registrado(s) correctamente.`);
+      toast(`${aProcesar.length} cobro(s) registrado(s) correctamente.`, "success");
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Acciones individuales (tabs existentes)
-  // ---------------------------------------------------------------------------
-
   const handleSubmit = async () => {
     if (!token) return;
-    if (!form.usuarioId) return alert("Por favor seleccione un árbitro");
-    if (!form.monto || parseFloat(form.monto) <= 0) return alert("El monto debe ser mayor a cero");
+    if (!form.usuarioId) return toast("Por favor seleccione un árbitro", "error");
+    if (!form.monto || parseFloat(form.monto) <= 0) return toast("El monto debe ser mayor a cero", "error");
 
     const payload = {
       usuario_id: Number(form.usuarioId),
@@ -303,26 +229,19 @@ export default function CuotasPage() {
       monto: Number(form.monto),
     };
 
-    const res = await fetch(
-      editingId
-        ? `${process.env.NEXT_PUBLIC_API_URL}/cuotas/${editingId}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/cuotas`,
-      {
-        method: editingId ? "PUT" : "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    try {
+      if (editingId) {
+        await apiPut(`/cuotas/${editingId}`, token, payload);
+      } else {
+        await apiPost("/cuotas", token, payload);
       }
-    );
-
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      return alert(`Error: ${error.detail || "No se pudo guardar la cuota"}`);
+      setForm({ usuarioId: "", fecha: new Date().toISOString().slice(0, 10), monto: "" });
+      setEditingId(null);
+      fetchData(token);
+      toast(editingId ? "Cuota actualizada correctamente" : "Cuota registrada exitosamente", "success");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "No se pudo guardar la cuota", "error");
     }
-
-    setForm({ usuarioId: "", fecha: new Date().toISOString().slice(0, 10), monto: "" });
-    setEditingId(null);
-    fetchData(token);
-    alert(editingId ? "Cuota actualizada correctamente" : "Cuota registrada exitosamente");
   };
 
   const handleEdit = (cuota: Cuota) => {
@@ -339,39 +258,29 @@ export default function CuotasPage() {
     if (!token) return;
     if (!confirm("¿Estás seguro de eliminar esta cuota?")) return;
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      return alert(`No se pudo eliminar: ${error.detail || "Error desconocido"}`);
+    try {
+      await apiDelete(`/cuotas/${id}`, token);
+      fetchData(token);
+      setSelectedCuota(null);
+      toast("Cuota eliminada correctamente", "success");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error desconocido", "error");
     }
-
-    fetchData(token);
-    setSelectedCuota(null);
-    alert("Cuota eliminada correctamente");
   };
 
   const handlePagarCuota = async (cuotaId: number, montoPagado?: number) => {
     if (!token) return;
     const monto = montoPagado ?? parseFloat(pagoForm.montoPagado);
-    if (!monto || monto <= 0) return alert("Por favor ingrese un monto válido");
+    if (!monto || monto <= 0) return toast("Por favor ingrese un monto válido", "error");
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/cuotas/${cuotaId}/pagar?monto_pagado=${monto}`,
-      { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      return alert(`Error al registrar pago: ${error.detail || "Error desconocido"}`);
+    try {
+      await apiPut(`/cuotas/${cuotaId}/pagar?monto_pagado=${monto}`, token);
+      fetchData(token);
+      setPagoForm({ cuotaId: 0, montoPagado: "" });
+      toast("Pago registrado correctamente", "success");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error desconocido", "error");
     }
-
-    fetchData(token);
-    setPagoForm({ cuotaId: 0, montoPagado: "" });
-    alert("Pago registrado correctamente");
   };
 
   const handleMarcarPagada = (id: number) => {
@@ -384,34 +293,12 @@ export default function CuotasPage() {
   const handleGenerateRecibo = async (id: number) => {
     if (!token) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cuotas/${id}/generar-recibo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(`Error al generar PDF: ${err.detail || `Status ${res.status}`}`);
-      }
-
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("pdf")) {
-        const text = await res.text();
-        console.error("Respuesta inesperada del servidor:", text);
-        return alert("Error: el servidor no devolvió un PDF válido.");
-      }
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `recibo_cuota_${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const { apiGetPdf } = await import("@/lib/api");
+      const { downloadBlob } = await import("@/lib/utils");
+      const blob = await apiGetPdf(`/cuotas/${id}/generar-recibo`, token);
+      downloadBlob(blob, `recibo_cuota_${id}.pdf`);
     } catch (e) {
-      console.error("Error al generar recibo:", e);
-      alert(`Error de conexión al generar el PDF.`);
+      toast(e instanceof ApiError ? e.message : "Error de conexión al generar el PDF", "error");
     }
   };
 
@@ -421,20 +308,20 @@ export default function CuotasPage() {
     if (!email) return;
 
     if (confirm(`¿Desea enviar el recibo al email:\n${email}?`)) {
-      fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cuotas/${cuota.id}/enviar-recibo?email=${email}`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      apiPost<{ success: boolean; message: string }>(
+        `/cuotas/${cuota.id}/enviar-recibo?email=${email}`,
+        token
       )
-        .then((res) => res.json())
-        .then((data: { success: boolean; message: string }) => {
-          if (data.success) alert(`Recibo enviado exitosamente a:\n${email}`);
-          else alert(`No se pudo enviar: ${data.message}`);
-        });
+        .then((data) => {
+          if (data.success) toast(`Recibo enviado exitosamente a:\n${email}`, "success");
+          else toast(`No se pudo enviar: ${data.message}`, "error");
+        })
+        .catch(() => toast("Error al enviar el recibo", "error"));
     }
   };
 
   const handleSearchByUser = () => {
-    if (!searchForm.usuarioId) return alert("Por favor seleccione un árbitro");
+    if (!searchForm.usuarioId) return toast("Por favor seleccione un árbitro", "error");
     const filtered = cuotas.filter((c) => {
       const matchUser = c.usuario_id === Number(searchForm.usuarioId);
       const matchDate = c.fecha >= searchForm.desde && c.fecha <= searchForm.hasta;
@@ -444,25 +331,13 @@ export default function CuotasPage() {
     setSelectedCuota(null);
   };
 
-  // ---------------------------------------------------------------------------
-  // Estadísticas generales
-  // ---------------------------------------------------------------------------
-
   const totalCuotas = cuotas.reduce((sum, c) => sum + c.monto, 0);
   const totalPagado = cuotas.reduce((sum, c) => sum + (c.monto_pagado || 0), 0);
   const totalPendiente = totalCuotas - totalPagado;
 
-  // ---------------------------------------------------------------------------
-  // Estadísticas cobro mensual
-  // ---------------------------------------------------------------------------
-
   const pagadosEsteMes = usuarios.filter((u) => cuotaDelMes(u.id)?.pagado).length;
   const pendientesEsteMes = usuarios.length - pagadosEsteMes;
   const marcadosParaCobrar = usuarios.filter((u) => estadoCobro[u.id]?.pagando).length;
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
 
   return (
     <div className="flex min-h-screen">
@@ -470,7 +345,6 @@ export default function CuotasPage() {
       <main className="flex-1 p-8 bg-white text-gray-900">
         <h1 className="text-3xl font-bold mb-6">Cuotas Societarias</h1>
 
-        {/* Tabs */}
         <div className="flex space-x-2 mb-6 flex-wrap gap-y-2">
           {(["form", "list", "search", "cobro"] as const).map((tab) => {
             const labels: Record<string, string> = {
@@ -501,9 +375,6 @@ export default function CuotasPage() {
           })}
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Tab: Registrar / Editar                                             */}
-        {/* ------------------------------------------------------------------ */}
         {activeTab === "form" && (
           <div className="bg-gray-50 p-6 rounded shadow">
             <h2 className="text-xl font-bold mb-4">
@@ -556,9 +427,6 @@ export default function CuotasPage() {
           </div>
         )}
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Tab: Listado                                                        */}
-        {/* ------------------------------------------------------------------ */}
         {activeTab === "list" && (
           <div className="bg-gray-50 p-6 rounded shadow">
             <h2 className="text-xl font-bold mb-4">Listado de Cuotas</h2>
@@ -575,7 +443,7 @@ export default function CuotasPage() {
                   {cuotas.map((c) => (
                     <tr key={c.id} className="hover:bg-gray-100">
                       <td className="p-2 border">{c.id}</td>
-                      <td className="p-2 border">{new Date(c.fecha).toLocaleDateString()}</td>
+                      <td className="p-2 border">{formatDate(c.fecha)}</td>
                       <td className="p-2 border">{c.usuario?.nombre || "Desconocido"}</td>
                       <td className="p-2 border">${c.monto.toFixed(2)}</td>
                       <td className="p-2 border">${(c.monto_pagado || 0).toFixed(2)}</td>
@@ -610,9 +478,6 @@ export default function CuotasPage() {
           </div>
         )}
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Tab: Buscar                                                         */}
-        {/* ------------------------------------------------------------------ */}
         {activeTab === "search" && (
           <div className="space-y-6">
             <div className="bg-gray-50 p-6 rounded shadow">
@@ -663,7 +528,7 @@ export default function CuotasPage() {
                       className={`cursor-pointer hover:bg-gray-100 ${selectedCuota?.id === c.id ? "bg-green-50" : ""}`}
                     >
                       <td className="p-2 border">{c.id}</td>
-                      <td className="p-2 border">{new Date(c.fecha).toLocaleDateString()}</td>
+                      <td className="p-2 border">{formatDate(c.fecha)}</td>
                       <td className="p-2 border">{c.usuario?.nombre || "Desconocido"}</td>
                       <td className="p-2 border">${c.monto.toFixed(2)}</td>
                       <td className="p-2 border">${(c.monto_pagado || 0).toFixed(2)}</td>
@@ -716,13 +581,8 @@ export default function CuotasPage() {
           </div>
         )}
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Tab: Cobro Mensual ← NUEVO                                         */}
-        {/* ------------------------------------------------------------------ */}
         {activeTab === "cobro" && (
           <div className="space-y-6">
-
-            {/* Encabezado con controles */}
             <div className="bg-gray-50 p-6 rounded shadow">
               <h2 className="text-xl font-bold mb-4">Cobro Mensual</h2>
               <p className="text-sm text-gray-500 mb-4">
@@ -730,7 +590,6 @@ export default function CuotasPage() {
               </p>
 
               <div className="flex flex-wrap gap-4 items-end">
-                {/* Selector de mes */}
                 <div>
                   <label className="block mb-1 text-sm font-semibold">Mes:</label>
                   <select
@@ -744,7 +603,6 @@ export default function CuotasPage() {
                   </select>
                 </div>
 
-                {/* Selector de año */}
                 <div>
                   <label className="block mb-1 text-sm font-semibold">Año:</label>
                   <select
@@ -758,7 +616,6 @@ export default function CuotasPage() {
                   </select>
                 </div>
 
-                {/* Monto global */}
                 <div>
                   <label className="block mb-1 text-sm font-semibold">Monto para todos ($):</label>
                   <input
@@ -769,7 +626,6 @@ export default function CuotasPage() {
                   />
                 </div>
 
-                {/* Botones de acción */}
                 <button
                   onClick={marcarTodos}
                   className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded text-sm border border-blue-300"
@@ -786,7 +642,6 @@ export default function CuotasPage() {
               </div>
             </div>
 
-            {/* Tarjetas resumen */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded shadow p-4 text-center">
                 <p className="text-sm text-gray-500 mb-1">Total árbitros</p>
@@ -802,7 +657,6 @@ export default function CuotasPage() {
               </div>
             </div>
 
-            {/* Tabla principal */}
             <div className="bg-gray-50 p-6 rounded shadow overflow-x-auto">
               <h3 className="font-bold mb-3 text-gray-700">
                 {MESES[mesCobro]} {anioCobro}
@@ -828,27 +682,16 @@ export default function CuotasPage() {
                         key={u.id}
                         className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-green-50 transition-colors`}
                       >
-                        {/* Nombre */}
                         <td className="p-3 border font-medium text-gray-900">{u.nombre}</td>
-
-                        {/* Estado */}
                         <td className="p-3 border text-center">
                           {yaPagado ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                              Pagado
-                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">Pagado</span>
                           ) : cuota ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                              Cuota sin pagar
-                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">Cuota sin pagar</span>
                           ) : (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
-                              Sin cuota
-                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">Sin cuota</span>
                           )}
                         </td>
-
-                        {/* Monto editable (solo si no está pagado) */}
                         <td className="p-3 border text-center">
                           {yaPagado ? (
                             <span className="text-green-700 font-semibold">
@@ -864,8 +707,6 @@ export default function CuotasPage() {
                             />
                           )}
                         </td>
-
-                        {/* Toggle pagar */}
                         <td className="p-3 border text-center">
                           {yaPagado ? (
                             <span className="text-gray-400 text-xs">—</span>
@@ -894,7 +735,6 @@ export default function CuotasPage() {
             </div>
           </div>
         )}
-
       </main>
     </div>
   );

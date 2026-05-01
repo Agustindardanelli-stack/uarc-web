@@ -14,9 +14,6 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setLoading(true);
     setErrorMsg("");
-    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
-    console.log("Email:", email);
-    console.log("Password length:", password.length);
 
     try {
       const response = await fetch(
@@ -43,8 +40,7 @@ export default function LoginPage() {
       const data = await response.json();
       localStorage.setItem("access_token", data.access_token);
       router.push("/dashboard");
-    } catch (error) {
-      console.error(error);
+    } catch {
       setErrorMsg("Error al conectar con el servidor.");
       setLoading(false);
     }
@@ -55,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-white rounded-lg shadow-lg p-8">
         <div className="flex justify-center mb-6">
           <Image
-            src="/uarclogo.png"
+            src="/UarcLogo.png"
             alt="Logo"
             width={96}
             height={96}

@@ -3,30 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../components/Sidebar";
-
-interface Usuario {
-  id: number;
-  nombre: string;
-}
-
-interface Retencion {
-  id: number;
-  nombre: string;
-  monto: number;
-}
-
-interface Cobranza {
-  id: number;
-  usuario_id: number;
-  fecha: string;
-  tipo_documento: string;
-  numero_factura?: string;
-  razon_social?: string;
-  monto: number;
-  descripcion?: string;
-  retencion?: Retencion;
-  retencion_id?: number;
-}
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
+import type { Usuario, Retencion, Cobranza } from "@/lib/types";
 
 interface FormRegistro {
   usuarioId: string;
@@ -49,6 +29,7 @@ interface FormEdicion {
 
 export default function CobranzasPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"registrar" | "listar" | "buscar">("registrar");
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [retenciones, setRetenciones] = useState<Retencion[]>([]);
@@ -94,48 +75,26 @@ export default function CobranzasPage() {
     const h = hasta ?? fechaHasta;
     if (!t) return;
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas?skip=0&limit=100`,
-        { headers: { Authorization: `Bearer ${t}` } }
-      );
-      if (response.ok) {
-        const data: Cobranza[] = await response.json();
-        if (Array.isArray(data)) {
-          const filtradas = data.filter((c) => c.fecha >= d && c.fecha <= h);
-          setCobranzas(filtradas);
-        }
+      const data = await apiGet<Cobranza[]>("/cobranzas?skip=0&limit=100", t);
+      if (Array.isArray(data)) {
+        setCobranzas(data.filter((c) => c.fecha >= d && c.fecha <= h));
       }
-    } catch (error) {
-      console.error("Error buscando cobranzas:", error);
+    } catch {
+      // silencioso — no interrumpir el flujo principal
     }
   }, [token, fechaDesde, fechaHasta]);
 
   const cargarDatos = useCallback(async (tkn: string) => {
     try {
-      const headers = { Authorization: `Bearer ${tkn}` };
-
-      const usuariosRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/usuarios`,
-        { headers }
-      );
-      if (usuariosRes.ok) {
-        const usuariosData: Usuario[] = await usuariosRes.json();
-        usuariosData.sort((a, b) => a.nombre.localeCompare(b.nombre));
-        setUsuarios(usuariosData);
-      }
-
-      const retencionesRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/retenciones/`,
-        { headers }
-      );
-      if (retencionesRes.ok) {
-        const retencionesData: Retencion[] = await retencionesRes.json();
-        setRetenciones(retencionesData);
-      }
-
+      const [usuariosData, retencionesData] = await Promise.all([
+        apiGet<Usuario[]>("/usuarios", tkn),
+        apiGet<Retencion[]>("/retenciones/", tkn),
+      ]);
+      setUsuarios([...usuariosData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setRetenciones(retencionesData);
       await buscarCobranzas(tkn);
-    } catch (error) {
-      console.error("Error cargando datos:", error);
+    } catch {
+      // datos iniciales — fallo silencioso
     }
   }, [buscarCobranzas]);
 
@@ -160,24 +119,25 @@ export default function CobranzasPage() {
 
   const registrarCobranza = async () => {
     if (!formRegistro.usuarioId) {
-      alert("Por favor seleccione un árbitro");
+      toast("Por favor seleccione un árbitro", "error");
       return;
     }
     if (parseFloat(formRegistro.monto) <= 0) {
-      alert("El monto debe ser mayor a cero");
+      toast("El monto debe ser mayor a cero", "error");
       return;
     }
     if (tipoDocumento === "factura") {
       if (!formRegistro.numeroFactura.trim()) {
-        alert("Por favor ingrese el número de factura");
+        toast("Por favor ingrese el número de factura", "error");
         return;
       }
       if (!formRegistro.razonSocial.trim()) {
-        alert("Por favor ingrese la razón social");
+        toast("Por favor ingrese la razón social", "error");
         return;
       }
     }
 
+    if (!token) return;
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
@@ -191,55 +151,34 @@ export default function CobranzasPage() {
         payload.numero_factura = formRegistro.numeroFactura;
         payload.razon_social = formRegistro.razonSocial;
       }
-      if (formRegistro.retencionId) {
-        payload.retencion_id = parseInt(formRegistro.retencionId);
-      }
-      if (formRegistro.descripcion) {
-        payload.descripcion = formRegistro.descripcion;
-      }
+      if (formRegistro.retencionId) payload.retencion_id = parseInt(formRegistro.retencionId);
+      if (formRegistro.descripcion) payload.descripcion = formRegistro.descripcion;
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
+      const data = await apiPost<{ email_enviado?: boolean; email_destinatario?: string }>(
+        "/cobranzas",
+        token,
+        payload
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (tipoDocumento === "recibo") {
-          if (data.email_enviado) {
-            alert(`Cobranza registrada exitosamente.\nRecibo enviado por email a ${data.email_destinatario}`);
-          } else {
-            alert("Cobranza registrada exitosamente");
-          }
-        } else {
-          alert("Factura registrada exitosamente");
-        }
-
-        setFormRegistro({
-          usuarioId: "",
-          fecha: new Date().toISOString().slice(0, 10),
-          numeroFactura: "",
-          razonSocial: "",
-          retencionId: "",
-          monto: "",
-          descripcion: "",
-        });
-        setTipoDocumento("recibo");
-        if (token) await buscarCobranzas(token);
+      if (tipoDocumento === "recibo" && data.email_enviado) {
+        toast(`Cobranza registrada. Recibo enviado a ${data.email_destinatario}`, "success");
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail || "No se pudo registrar la cobranza"}`);
+        toast(tipoDocumento === "factura" ? "Factura registrada exitosamente" : "Cobranza registrada exitosamente", "success");
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al registrar cobranza");
+
+      setFormRegistro({
+        usuarioId: "",
+        fecha: new Date().toISOString().slice(0, 10),
+        numeroFactura: "",
+        razonSocial: "",
+        retencionId: "",
+        monto: "",
+        descripcion: "",
+      });
+      setTipoDocumento("recibo");
+      await buscarCobranzas(token);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al registrar cobranza", "error");
     } finally {
       setLoading(false);
     }
@@ -247,44 +186,33 @@ export default function CobranzasPage() {
 
   const buscarCobranzasPorUsuario = async () => {
     if (!usuarioSeleccionado) {
-      alert("Por favor seleccione un árbitro");
+      toast("Por favor seleccione un árbitro", "error");
       return;
     }
+    if (!token) return;
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const todasCobranzas = await apiGet<Cobranza[]>("/cobranzas", token);
+      const cobranzasDelUsuario = todasCobranzas.filter(
+        (c) => c.usuario_id === parseInt(usuarioSeleccionado)
       );
-
-      if (response.ok) {
-        const todasCobranzas: Cobranza[] = await response.json();
-        const cobranzasDelUsuario = todasCobranzas.filter(
-          (c) => c.usuario_id === parseInt(usuarioSeleccionado)
-        );
-        if (cobranzasDelUsuario.length === 0) {
-          alert("No se encontraron cobranzas para este árbitro");
-        }
-        setCobranzasUsuario(cobranzasDelUsuario);
-        setCobranzaActual(null);
+      if (cobranzasDelUsuario.length === 0) {
+        toast("No se encontraron cobranzas para este árbitro", "info");
       }
-    } catch (error) {
-      console.error("Error:", error);
+      setCobranzasUsuario(cobranzasDelUsuario);
+      setCobranzaActual(null);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al buscar cobranzas", "error");
     }
   };
 
   const seleccionarCobranza = async (cobranzaId: number): Promise<void> => {
+    if (!token) return;
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas/${cobranzaId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.ok) {
-        const cobranza: Cobranza = await response.json();
-        setCobranzaActual(cobranza);
-        setEditando(false);
-      }
-    } catch (error) {
-      console.error("Error:", error);
+      const cobranza = await apiGet<Cobranza>(`/cobranzas/${cobranzaId}`, token);
+      setCobranzaActual(cobranza);
+      setEditando(false);
+    } catch {
+      // silencioso
     }
   };
 
@@ -302,14 +230,14 @@ export default function CobranzasPage() {
   };
 
   const guardarEdicion = async () => {
-    if (!cobranzaActual) return;
+    if (!cobranzaActual || !token) return;
     if (formEdicion.tipoDocumento === "factura") {
       if (!formEdicion.numeroFactura.trim()) {
-        alert("Por favor ingrese el número de factura");
+        toast("Por favor ingrese el número de factura", "error");
         return;
       }
       if (!formEdicion.razonSocial.trim()) {
-        alert("Por favor ingrese la razón social");
+        toast("Por favor ingrese la razón social", "error");
         return;
       }
     }
@@ -325,70 +253,37 @@ export default function CobranzasPage() {
         payload.numero_factura = formEdicion.numeroFactura;
         payload.razon_social = formEdicion.razonSocial;
       }
-      if (cobranzaActual.retencion_id) {
-        payload.retencion_id = cobranzaActual.retencion_id;
-      }
+      if (cobranzaActual.retencion_id) payload.retencion_id = cobranzaActual.retencion_id;
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas/${cobranzaActual.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        alert("Cobranza actualizada correctamente");
-        setEditando(false);
-        await buscarCobranzasPorUsuario();
-        await seleccionarCobranza(cobranzaActual.id);
-      } else {
-        alert("Error al actualizar la cobranza");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al actualizar la cobranza");
+      await apiPut(`/cobranzas/${cobranzaActual.id}`, token, payload);
+      toast("Cobranza actualizada correctamente", "success");
+      setEditando(false);
+      await buscarCobranzasPorUsuario();
+      await seleccionarCobranza(cobranzaActual.id);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al actualizar la cobranza", "error");
     }
   };
 
   const eliminarCobranza = async (): Promise<void> => {
-    if (!cobranzaActual) return;
+    if (!cobranzaActual || !token) return;
     if (!confirm(`¿Está seguro de eliminar la cobranza #${cobranzaActual.id}?`)) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/cobranzas/${cobranzaActual.id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (response.ok) {
-        alert("Cobranza eliminada correctamente");
-        setCobranzaActual(null);
-        await buscarCobranzasPorUsuario();
-        if (token) await buscarCobranzas(token);
-      } else {
-        alert("Error al eliminar la cobranza");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al eliminar la cobranza");
+      await apiDelete(`/cobranzas/${cobranzaActual.id}`, token);
+      toast("Cobranza eliminada correctamente", "success");
+      setCobranzaActual(null);
+      await buscarCobranzasPorUsuario();
+      await buscarCobranzas(token);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al eliminar la cobranza", "error");
     }
   };
 
-  const calcularTotal = (): number => {
-    return cobranzas.reduce((sum, c) => sum + c.monto, 0);
-  };
+  const calcularTotal = (): number => cobranzas.reduce((sum, c) => sum + c.monto, 0);
 
-  const obtenerNombreUsuario = (usuarioId: number): string => {
-    const usuario = usuarios.find((u) => u.id === usuarioId);
-    return usuario ? usuario.nombre : "Desconocido";
-  };
+  const obtenerNombreUsuario = (usuarioId: number): string =>
+    usuarios.find((u) => u.id === usuarioId)?.nombre ?? "Desconocido";
 
   return (
     <div className="flex min-h-screen">
@@ -463,9 +358,7 @@ export default function CobranzasPage() {
                     >
                       <option value="">Seleccione un árbitro</option>
                       {usuarios.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.nombre}
-                        </option>
+                        <option key={u.id} value={u.id}>{u.nombre}</option>
                       ))}
                     </select>
                   </div>
@@ -593,9 +486,7 @@ export default function CobranzasPage() {
               </h2>
               <div className="flex space-x-4 mb-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Desde:
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Desde:</label>
                   <input
                     type="date"
                     value={fechaDesde}
@@ -604,9 +495,7 @@ export default function CobranzasPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Hasta:
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Hasta:</label>
                   <input
                     type="date"
                     value={fechaHasta}
@@ -640,12 +529,8 @@ export default function CobranzasPage() {
                     {cobranzas.map((c, idx) => (
                       <tr key={c.id} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                         <td className="p-3 border">{c.id}</td>
-                        <td className="p-3 border">
-                          {new Date(c.fecha).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 border">
-                          {obtenerNombreUsuario(c.usuario_id)}
-                        </td>
+                        <td className="p-3 border">{formatDate(c.fecha)}</td>
+                        <td className="p-3 border">{obtenerNombreUsuario(c.usuario_id)}</td>
                         <td className="p-3 border">{c.retencion?.nombre || "N/A"}</td>
                         <td className="p-3 border text-right">${c.monto.toFixed(2)}</td>
                         <td className="p-3 border">{c.descripcion || "-"}</td>
@@ -681,9 +566,7 @@ export default function CobranzasPage() {
                   >
                     <option value="">Seleccione un árbitro</option>
                     {usuarios.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
+                      <option key={u.id} value={u.id}>{u.nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -730,9 +613,7 @@ export default function CobranzasPage() {
                       {cobranzasUsuario.map((c, idx) => (
                         <tr key={c.id} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                           <td className="p-3 border">{c.id}</td>
-                          <td className="p-3 border">
-                            {new Date(c.fecha).toLocaleDateString()}
-                          </td>
+                          <td className="p-3 border">{formatDate(c.fecha)}</td>
                           <td className="p-3 border">{c.retencion?.nombre || "N/A"}</td>
                           <td className="p-3 border text-right">${c.monto.toFixed(2)}</td>
                           <td className="p-3 border">{c.descripcion || "-"}</td>
@@ -759,9 +640,7 @@ export default function CobranzasPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-semibold text-gray-700">Fecha:</label>
-                      <p className="text-gray-900">
-                        {new Date(cobranzaActual.fecha).toLocaleDateString()}
-                      </p>
+                      <p className="text-gray-900">{formatDate(cobranzaActual.fecha)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-gray-700">Tipo de Documento:</label>

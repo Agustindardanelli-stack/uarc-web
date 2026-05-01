@@ -2,30 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
-interface Balance {
-  ingresos: string;
-  egresos: string;
-  saldo: string;
-}
-
-interface Usuario {
-  nombre: string;
-}
-
-interface Movimiento {
-  id: number;
-  fecha: string;
-  detalle?: string;
-  recibo_factura?: string;
-  ingreso: number;
-  egreso: number;
-  saldo?: number;
-  descripcion?: string;
-  usuario?: Usuario;
-}
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
+import type { Balance, Movimiento } from "@/lib/types";
 
 export default function DashboardPage() {
+  const { toast } = useToast();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
 
@@ -33,46 +16,20 @@ export default function DashboardPage() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/reportes/balance`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data: Balance) => setBalance(data));
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/partidas?skip=0&limit=100`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data: Movimiento[]) => setMovimientos(data));
+    apiGet<Balance>("/reportes/balance", token).then(setBalance).catch(() => {});
+    apiGet<Movimiento[]>("/partidas?skip=0&limit=100", token).then(setMovimientos).catch(() => {});
   }, []);
 
-  function formatCurrency(value: string | number | undefined): string {
-    if (!value && value !== 0) return "$0,00";
-
-    const num =
-      typeof value === "string"
-        ? parseFloat(value.replace(/[$,]/g, ""))
-        : value;
-
-    if (isNaN(num)) return "$0,00";
-
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  }
-
-  // 🔥 FIX DE FECHA (SIN TIMEZONE)
-  const formatFecha = (fecha?: string) => {
-    if (!fecha) return "";
-
-    if (fecha.includes("T")) {
-      return fecha.split("T")[0].split("-").reverse().join("/");
+  const recalcularSaldos = async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    try {
+      const data = await apiPost<{ message: string }>("/partidas/recalcular-saldos", token);
+      toast(data.message, "success");
+      window.location.reload();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al recalcular saldos", "error");
     }
-
-    return fecha.split("-").reverse().join("/");
   };
 
   return (
@@ -82,26 +39,10 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-8">Home</h1>
 
         <button
-          onClick={() => {
-            const token = localStorage.getItem("access_token");
-            if (!token) return;
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/partidas/recalcular-saldos`,
-              {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            )
-              .then((res) => res.json())
-              .then((data) => {
-                alert(data.message);
-                window.location.reload();
-              })
-              .catch(() => alert("Error al recalcular saldos"));
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow"
+          onClick={recalcularSaldos}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow mb-8 block"
         >
-          🔄 Recalcular Saldos
+          Recalcular Saldos
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -153,42 +94,21 @@ export default function DashboardPage() {
                     }
                   >
                     <td className="px-4 py-3">{m.id}</td>
-
-                    {/* ✅ FIX APLICADO ACÁ */}
-                    <td className="px-4 py-3">
-                      {formatFecha(m.fecha)}
-                    </td>
-
+                    <td className="px-4 py-3">{formatDate(m.fecha)}</td>
                     <td className="px-4 py-3">
                       {m.ingreso > 0 ? (
-                        <span className="text-green-600 font-medium">
-                          INGRESO
-                        </span>
+                        <span className="text-green-600 font-medium">INGRESO</span>
                       ) : (
-                        <span className="text-red-600 font-medium">
-                          EGRESO
-                        </span>
+                        <span className="text-red-600 font-medium">EGRESO</span>
                       )}
                     </td>
                     <td className="px-4 py-3">{m.detalle || "-"}</td>
-                    <td className="px-4 py-3">
-                      {m.recibo_factura || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-green-600">
-                      {formatCurrency(m.ingreso)}
-                    </td>
-                    <td className="px-4 py-3 text-red-600">
-                      {formatCurrency(m.egreso)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">
-                      {formatCurrency(m.saldo)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {m.usuario?.nombre || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {m.descripcion || "-"}
-                    </td>
+                    <td className="px-4 py-3">{m.recibo_factura || "-"}</td>
+                    <td className="px-4 py-3 text-green-600">{formatCurrency(m.ingreso)}</td>
+                    <td className="px-4 py-3 text-red-600">{formatCurrency(m.egreso)}</td>
+                    <td className="px-4 py-3 font-semibold">{formatCurrency(m.saldo)}</td>
+                    <td className="px-4 py-3">{m.usuario?.nombre || "-"}</td>
+                    <td className="px-4 py-3">{m.descripcion || "-"}</td>
                   </tr>
                 ))}
               </tbody>

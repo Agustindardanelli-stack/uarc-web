@@ -2,24 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-
-interface Usuario {
-  id: number;
-  nombre: string;
-  email?: string;
-}
-
-interface Pago {
-  id: number;
-  usuario_id: number;
-  fecha: string;
-  monto: number;
-  descripcion?: string;
-  tipo_documento: "orden_pago" | "factura";
-  numero_factura?: string;
-  razon_social?: string;
-  usuario?: Usuario;
-}
+import { apiGet, apiPost, apiPut, apiDelete, apiGetBlob, ApiError } from "@/lib/api";
+import { formatDate, downloadBlob } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
+import type { Usuario, Pago } from "@/lib/types";
 
 interface Form {
   usuarioId: string;
@@ -37,6 +23,7 @@ interface SearchForm {
 }
 
 export default function PagosPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"form" | "list" | "search">("form");
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
@@ -60,19 +47,12 @@ export default function PagosPage() {
   });
 
   const fetchData = useCallback((tkn: string) => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
-      headers: { Authorization: `Bearer ${tkn}` },
-    })
-      .then((res) => res.json())
-      .then((data: Usuario[]) =>
-        setUsuarios(data.sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      );
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/pagos`, {
-      headers: { Authorization: `Bearer ${tkn}` },
-    })
-      .then((res) => res.json())
-      .then((data: Pago[]) => setPagos(data));
+    apiGet<Usuario[]>("/usuarios", tkn)
+      .then((data) => setUsuarios(data.sort((a, b) => a.nombre.localeCompare(b.nombre))))
+      .catch(() => {});
+    apiGet<Pago[]>("/pagos", tkn)
+      .then(setPagos)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -83,25 +63,13 @@ export default function PagosPage() {
     }
   }, [fetchData]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!token) return;
-    if (!form.usuarioId) {
-      alert("Por favor seleccione un árbitro");
-      return;
-    }
-    if (!form.monto || parseFloat(form.monto) <= 0) {
-      alert("El monto debe ser mayor a cero");
-      return;
-    }
+    if (!form.usuarioId) return toast("Por favor seleccione un árbitro", "error");
+    if (!form.monto || parseFloat(form.monto) <= 0) return toast("El monto debe ser mayor a cero", "error");
     if (tipoDocumento === "factura") {
-      if (!form.numeroFactura.trim()) {
-        alert("Por favor ingrese el número de factura");
-        return;
-      }
-      if (!form.razonSocial.trim()) {
-        alert("Por favor ingrese la razón social");
-        return;
-      }
+      if (!form.numeroFactura.trim()) return toast("Por favor ingrese el número de factura", "error");
+      if (!form.razonSocial.trim()) return toast("Por favor ingrese la razón social", "error");
     }
 
     const payload: Record<string, unknown> = {
@@ -111,45 +79,37 @@ export default function PagosPage() {
       descripcion: form.descripcion,
       tipo_documento: tipoDocumento,
     };
-
     if (tipoDocumento === "factura") {
       payload.numero_factura = form.numeroFactura;
       payload.razon_social = form.razonSocial;
     }
 
-    const url = editingId
-      ? `${process.env.NEXT_PUBLIC_API_URL}/pagos/${editingId}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/pagos`;
-
-    const method = editingId ? "PUT" : "POST";
-
-    fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }).then((res) => {
-      if (res.ok) {
-        setForm({
-          usuarioId: "",
-          fecha: new Date().toISOString().slice(0, 10),
-          monto: "",
-          descripcion: "",
-          numeroFactura: "",
-          razonSocial: "",
-        });
-        setEditingId(null);
-        setTipoDocumento("orden_pago");
-        fetchData(token);
-        alert(
-          editingId
-            ? "Pago actualizado correctamente"
-            : `${tipoDocumento === "factura" ? "Factura" : "Pago"} registrado exitosamente`
-        );
+    try {
+      if (editingId) {
+        await apiPut(`/pagos/${editingId}`, token, payload);
+      } else {
+        await apiPost("/pagos", token, payload);
       }
-    });
+      setForm({
+        usuarioId: "",
+        fecha: new Date().toISOString().slice(0, 10),
+        monto: "",
+        descripcion: "",
+        numeroFactura: "",
+        razonSocial: "",
+      });
+      setEditingId(null);
+      setTipoDocumento("orden_pago");
+      fetchData(token);
+      toast(
+        editingId
+          ? "Pago actualizado correctamente"
+          : `${tipoDocumento === "factura" ? "Factura" : "Pago"} registrado exitosamente`,
+        "success"
+      );
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al guardar el pago", "error");
+    }
   };
 
   const handleEdit = (pago: Pago) => {
@@ -166,32 +126,26 @@ export default function PagosPage() {
     setActiveTab("form");
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!token) return;
-    if (confirm("¿Estás seguro de eliminar este pago?")) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/pagos/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(() => {
-        fetchData(token);
-        setSelectedPago(null);
-      });
+    if (!confirm("¿Estás seguro de eliminar este pago?")) return;
+    try {
+      await apiDelete(`/pagos/${id}`, token);
+      fetchData(token);
+      setSelectedPago(null);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al eliminar el pago", "error");
     }
   };
 
-  const handleGeneratePDF = (id: number) => {
+  const handleGeneratePDF = async (id: number) => {
     if (!token) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/pagos/${id}/generar-pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `pago_${id}.pdf`;
-        a.click();
-      });
+    try {
+      const blob = await apiGetBlob(`/pagos/${id}/generar-pdf`, token);
+      downloadBlob(blob, `pago_${id}.pdf`);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al generar el PDF", "error");
+    }
   };
 
   const handleSendEmail = (pago: Pago) => {
@@ -200,36 +154,25 @@ export default function PagosPage() {
     if (!email) return;
 
     if (confirm(`¿Desea enviar el comprobante al email:\n${email}?`)) {
-      fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/pagos/${pago.id}/reenviar-orden?email=${email}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      apiPost<{ success: boolean; message: string }>(
+        `/pagos/${pago.id}/reenviar-orden?email=${email}`,
+        token
       )
-        .then((res) => res.json())
-        .then((data: { success: boolean; message: string }) => {
-          if (data.success) {
-            alert(`Comprobante enviado exitosamente a:\n${email}`);
-          } else {
-            alert(`No se pudo enviar: ${data.message}`);
-          }
-        });
+        .then((data) => {
+          if (data.success) toast(`Comprobante enviado exitosamente a:\n${email}`, "success");
+          else toast(`No se pudo enviar: ${data.message}`, "error");
+        })
+        .catch(() => toast("Error al enviar el comprobante", "error"));
     }
   };
 
   const handleSearchByUser = () => {
-    if (!searchForm.usuarioId) {
-      alert("Por favor seleccione un árbitro");
-      return;
-    }
-
+    if (!searchForm.usuarioId) return toast("Por favor seleccione un árbitro", "error");
     const filtered = pagos.filter((p) => {
       const matchUser = p.usuario_id === Number(searchForm.usuarioId);
       const matchDate = p.fecha >= searchForm.desde && p.fecha <= searchForm.hasta;
       return matchUser && matchDate;
     });
-
     setPagosFiltrados(filtered);
     setSelectedPago(null);
   };
@@ -319,9 +262,7 @@ export default function PagosPage() {
               >
                 <option value="">Seleccione Árbitro</option>
                 {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre}
-                  </option>
+                  <option key={u.id} value={u.id}>{u.nombre}</option>
                 ))}
               </select>
 
@@ -419,7 +360,7 @@ export default function PagosPage() {
                 {pagos.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-100">
                     <td className="p-2 border">{p.id}</td>
-                    <td className="p-2 border">{new Date(p.fecha).toLocaleDateString()}</td>
+                    <td className="p-2 border">{formatDate(p.fecha)}</td>
                     <td className="p-2 border">
                       {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
                     </td>
@@ -467,16 +408,12 @@ export default function PagosPage() {
                   <label className="block mb-2 font-semibold">Árbitro:</label>
                   <select
                     value={searchForm.usuarioId}
-                    onChange={(e) =>
-                      setSearchForm({ ...searchForm, usuarioId: e.target.value })
-                    }
+                    onChange={(e) => setSearchForm({ ...searchForm, usuarioId: e.target.value })}
                     className="border p-2 rounded w-full"
                   >
                     <option value="">Seleccione un árbitro</option>
                     {usuarios.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
+                      <option key={u.id} value={u.id}>{u.nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -502,13 +439,13 @@ export default function PagosPage() {
                   onClick={handleSearchByUser}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                 >
-                  🔍 Buscar
+                  Buscar
                 </button>
               </div>
             </div>
 
             <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">📋 Resultados</h2>
+              <h2 className="text-xl font-bold mb-4">Resultados</h2>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-blue-100">
@@ -530,7 +467,7 @@ export default function PagosPage() {
                       }`}
                     >
                       <td className="p-2 border">{p.id}</td>
-                      <td className="p-2 border">{new Date(p.fecha).toLocaleDateString()}</td>
+                      <td className="p-2 border">{formatDate(p.fecha)}</td>
                       <td className="p-2 border">
                         {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
                       </td>
@@ -548,25 +485,25 @@ export default function PagosPage() {
                     onClick={() => handleEdit(selectedPago)}
                     className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
                   >
-                    ✏️ Editar
+                    Editar
                   </button>
                   <button
                     onClick={() => handleDelete(selectedPago.id)}
                     className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
                   >
-                    🗑️ Eliminar
+                    Eliminar
                   </button>
                   <button
                     onClick={() => handleGeneratePDF(selectedPago.id)}
                     className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded"
                   >
-                    📄 Descargar PDF
+                    Descargar PDF
                   </button>
                   <button
                     onClick={() => handleSendEmail(selectedPago)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                   >
-                    📧 Enviar Email
+                    Enviar Email
                   </button>
                 </div>
               )}

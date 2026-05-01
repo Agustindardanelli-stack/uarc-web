@@ -2,23 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
-
-// ---------------------------------------------------------------------------
-// Tipos
-// ---------------------------------------------------------------------------
-
-type Rol = {
-  id: number;
-  nombre: string;
-};
-
-type Usuario = {
-  id: number;
-  nombre: string;
-  email: string;
-  rol_id: number;
-  rol?: Rol;
-};
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api";
+import type { Usuario, Rol } from "@/lib/types";
 
 type Form = {
   nombre: string;
@@ -28,10 +13,6 @@ type Form = {
 };
 
 const FORM_VACIO: Form = { nombre: "", email: "", password: "", rol_id: "" };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function iniciales(nombre: string): string {
   return nombre
@@ -54,10 +35,6 @@ function colorAvatar(id: number): string {
   return COLORES_AVATAR[id % COLORES_AVATAR.length];
 }
 
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
-
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
@@ -71,23 +48,15 @@ export default function UsuariosPage() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ---------------------------------------------------------------------------
-  // Fetch
-  // ---------------------------------------------------------------------------
-
   const fetchData = useCallback((tkn: string) => {
     setCargando(true);
     Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
-        headers: { Authorization: `Bearer ${tkn}` },
-      }).then((r) => r.json()),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/roles`, {
-        headers: { Authorization: `Bearer ${tkn}` },
-      }).then((r) => r.json()),
+      apiGet<Usuario[]>("/usuarios", tkn),
+      apiGet<Rol[]>("/roles", tkn),
     ])
       .then(([dataUsuarios, dataRoles]) => {
-        setUsuarios(Array.isArray(dataUsuarios) ? dataUsuarios.sort((a: Usuario, b: Usuario) => a.nombre.localeCompare(b.nombre)) : []);
-        setRoles(Array.isArray(dataRoles) ? dataRoles : []);
+        setUsuarios([...dataUsuarios].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        setRoles(dataRoles);
       })
       .catch(() => setError("No se pudieron cargar los datos"))
       .finally(() => setCargando(false));
@@ -100,10 +69,6 @@ export default function UsuariosPage() {
       fetchData(tkn);
     }
   }, [fetchData]);
-
-  // ---------------------------------------------------------------------------
-  // Acciones
-  // ---------------------------------------------------------------------------
 
   const handleSubmit = async () => {
     if (!token) return;
@@ -122,36 +87,29 @@ export default function UsuariosPage() {
     };
     if (form.password.trim()) payload.password = form.password;
 
-    const url = editingId
-      ? `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${editingId}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/usuarios`;
-
-    const res = await fetch(url, {
-      method: editingId ? "PUT" : "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }).finally(() => setGuardando(false));
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return setError(err.detail || "Error al guardar el usuario");
+    try {
+      if (editingId) {
+        await apiPut(`/usuarios/${editingId}`, token, payload);
+      } else {
+        await apiPost("/usuarios", token, payload);
+      }
+      setForm(FORM_VACIO);
+      setEditingId(null);
+      setMostrarForm(false);
+      fetchData(token);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Error al guardar el usuario");
+    } finally {
+      setGuardando(false);
     }
-
-    setForm(FORM_VACIO);
-    setEditingId(null);
-    setMostrarForm(false);
-    fetchData(token);
   };
 
   const handleEdit = (u: Usuario) => {
     setForm({
       nombre: u.nombre,
-      email: u.email,
+      email: u.email ?? "",
       password: "",
-      rol_id: u.rol_id.toString(),
+      rol_id: (u.rol_id ?? "").toString(),
     });
     setEditingId(u.id);
     setMostrarForm(true);
@@ -163,17 +121,12 @@ export default function UsuariosPage() {
     if (!token) return;
     if (!confirm("¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.")) return;
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usuarios/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return setError(err.detail || "No se pudo eliminar el usuario");
+    try {
+      await apiDelete(`/usuarios/${id}`, token);
+      fetchData(token);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo eliminar el usuario");
     }
-
-    fetchData(token);
   };
 
   const cancelar = () => {
@@ -183,20 +136,12 @@ export default function UsuariosPage() {
     setError(null);
   };
 
-  // ---------------------------------------------------------------------------
-  // Filtro
-  // ---------------------------------------------------------------------------
-
   const usuariosFiltrados = usuarios.filter(
     (u) =>
       u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      u.email.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (u.email ?? "").toLowerCase().includes(busqueda.toLowerCase()) ||
       u.rol?.nombre?.toLowerCase().includes(busqueda.toLowerCase())
   );
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -204,7 +149,6 @@ export default function UsuariosPage() {
 
       <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
 
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Árbitros y Usuarios</h1>
@@ -223,7 +167,6 @@ export default function UsuariosPage() {
           </button>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
             <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -234,7 +177,6 @@ export default function UsuariosPage() {
           </div>
         )}
 
-        {/* Formulario */}
         {mostrarForm && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-5">
@@ -242,7 +184,6 @@ export default function UsuariosPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Nombre */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo *</label>
                 <input
@@ -254,7 +195,6 @@ export default function UsuariosPage() {
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Email *</label>
                 <input
@@ -266,7 +206,6 @@ export default function UsuariosPage() {
                 />
               </div>
 
-              {/* Contraseña */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Contraseña {editingId ? "(dejar vacío para no cambiar)" : "*"}
@@ -280,7 +219,6 @@ export default function UsuariosPage() {
                 />
               </div>
 
-              {/* Rol */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Rol *</label>
                 <select
@@ -296,7 +234,6 @@ export default function UsuariosPage() {
               </div>
             </div>
 
-            {/* Botones */}
             <div className="flex gap-3 mt-5">
               <button
                 onClick={handleSubmit}
@@ -315,7 +252,6 @@ export default function UsuariosPage() {
           </div>
         )}
 
-        {/* Buscador */}
         <div className="relative mb-5">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -334,7 +270,6 @@ export default function UsuariosPage() {
           )}
         </div>
 
-        {/* Lista */}
         {cargando ? (
           <div className="flex items-center justify-center py-20 text-gray-400 text-sm">Cargando usuarios...</div>
         ) : usuariosFiltrados.length === 0 ? (
@@ -346,7 +281,6 @@ export default function UsuariosPage() {
           </div>
         ) : (
           <>
-            {/* Vista escritorio — tabla */}
             <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
@@ -398,7 +332,6 @@ export default function UsuariosPage() {
               </table>
             </div>
 
-            {/* Vista mobile — cards */}
             <div className="md:hidden space-y-3">
               {usuariosFiltrados.map((u) => (
                 <div key={u.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
@@ -435,7 +368,6 @@ export default function UsuariosPage() {
               ))}
             </div>
 
-            {/* Pie */}
             <p className="text-xs text-center text-gray-400 mt-4">
               Mostrando {usuariosFiltrados.length} de {usuarios.length} usuario{usuarios.length !== 1 ? "s" : ""}
             </p>
