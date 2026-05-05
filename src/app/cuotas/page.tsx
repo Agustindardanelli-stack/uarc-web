@@ -71,6 +71,7 @@ export default function CuotasPage() {
   const [montoGlobal, setMontoGlobal] = useState("5000");
   const [estadoCobro, setEstadoCobro] = useState<EstadoCobro>({});
   const [guardando, setGuardando] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
 
   const fetchData = useCallback((tkn: string) => {
     apiGet<Usuario[]>("/usuarios", tkn)
@@ -226,6 +227,36 @@ export default function CuotasPage() {
       toast(`Completado con errores:\n${errores.join("\n")}`, "error");
     } else {
       toast(`${aProcesar.length} cobro(s) registrado(s) correctamente.`, "success");
+    }
+  }
+
+  async function handleReenviarEmails() {
+    if (!token) return;
+    const pagadosEsteMes = usuarios.filter((u) => cuotaDelMes(u.id)?.pagado && u.email);
+    if (!pagadosEsteMes.length) {
+      toast("No hay árbitros con cuota pagada y email registrado este mes.", "info");
+      return;
+    }
+    setReenviando(true);
+    let enviados = 0;
+    let errores = 0;
+    for (const usuario of pagadosEsteMes) {
+      const cuota = cuotaDelMes(usuario.id)!;
+      try {
+        await apiPost(
+          `/cuotas/${cuota.id}/enviar-recibo?email=${encodeURIComponent(usuario.email!)}`,
+          token
+        );
+        enviados++;
+      } catch {
+        errores++;
+      }
+    }
+    setReenviando(false);
+    if (errores > 0) {
+      toast(`Enviados: ${enviados} — Fallidos: ${errores}`, "error");
+    } else {
+      toast(`${enviados} email(s) enviado(s) correctamente.`, "success");
     }
   }
 
@@ -649,6 +680,13 @@ export default function CuotasPage() {
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded text-sm"
                 >
                   {guardando ? "Guardando..." : `Guardar (${marcadosParaCobrar})`}
+                </button>
+                <button
+                  onClick={handleReenviarEmails}
+                  disabled={reenviando || pagadosEsteMes === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded text-sm"
+                >
+                  {reenviando ? "Enviando..." : `Reenviar emails (${pagadosEsteMes})`}
                 </button>
               </div>
             </div>
