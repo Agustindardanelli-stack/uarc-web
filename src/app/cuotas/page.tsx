@@ -102,11 +102,12 @@ export default function CuotasPage() {
 
   function cuotaDelMes(usuarioId: number): Cuota | undefined {
     return cuotas.find((c) => {
-      const d = new Date(c.fecha);
+      const iso = c.fecha.includes("T") ? c.fecha.split("T")[0] : c.fecha;
+      const [year, month] = iso.split("-").map(Number);
       return (
         c.usuario_id === usuarioId &&
-        d.getMonth() === mesCobro &&
-        d.getFullYear() === anioCobro
+        month - 1 === mesCobro &&
+        year === anioCobro
       );
     });
   }
