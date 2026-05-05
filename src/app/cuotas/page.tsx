@@ -202,7 +202,7 @@ export default function CuotasPage() {
 
         if (cuotaId && usuario.email) {
           await apiPost(
-            `/cuotas/${cuotaId}/enviar-recibo?email=${encodeURIComponent(usuario.email)}`,
+            `/cuotas/${cuotaId}/reenviar-recibo?email=${encodeURIComponent(usuario.email)}`,
             token
           ).catch(() => {});
         }
@@ -245,7 +245,7 @@ export default function CuotasPage() {
       const cuota = cuotaDelMes(usuario.id)!;
       try {
         await apiPost(
-          `/cuotas/${cuota.id}/enviar-recibo?email=${encodeURIComponent(usuario.email!)}`,
+          `/cuotas/${cuota.id}/reenviar-recibo?email=${encodeURIComponent(usuario.email!)}`,
           token
         );
         enviados++;
@@ -352,7 +352,7 @@ export default function CuotasPage() {
 
     if (confirm(`¿Desea enviar el recibo al email:\n${email}?`)) {
       apiPost<{ success: boolean; message: string }>(
-        `/cuotas/${cuota.id}/enviar-recibo?email=${email}`,
+        `/cuotas/${cuota.id}/reenviar-recibo?email=${email}`,
         token
       )
         .then((data) => {
