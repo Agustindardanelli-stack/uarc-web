@@ -11,8 +11,6 @@ const menuItems = [
   { title: "Reportes", path: "/reportes" },
   { title: "Config. Email", path: "/config-email" },
   { title: "Agregar Socio", path: "/usuarios" },
-  { title: "Designaciones", path: "/designaciones" },
-  { title: "Planilla de Recibos", path: "/planilla-recibos" },
 ];
 
 export default function Sidebar() {
@@ -20,8 +18,8 @@ export default function Sidebar() {
     <aside className="bg-blue-800 text-white w-56 min-h-screen flex flex-col">
       <div className="text-center py-6">
         <Image
-        src="/uarclogo.png"
-        alt="UARC Logo"
+        src="/UarcLogo.png"
+        alt=" Logo"
         width={96}
         height={96}
         className="mx-auto mb-4"

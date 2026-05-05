@@ -171,11 +171,14 @@ export default function CuotasPage() {
       const cuotaExistente = cuotaDelMes(usuario.id);
 
       try {
+        let cuotaId: number | null = null;
+
         if (cuotaExistente && !cuotaExistente.pagado) {
           await apiPut(
             `/cuotas/${cuotaExistente.id}/pagar?monto_pagado=${monto}`,
             token
           );
+          cuotaId = cuotaExistente.id;
         } else if (!cuotaExistente) {
           const nuevaCuota = await apiPost<Cuota>(
             "/cuotas?no_generar_movimiento=true",
@@ -192,6 +195,14 @@ export default function CuotasPage() {
             `/cuotas/${nuevaCuota.id}/pagar?monto_pagado=${monto}`,
             token
           );
+          cuotaId = nuevaCuota.id;
+        }
+
+        if (cuotaId && usuario.email) {
+          await apiPost(
+            `/cuotas/${cuotaId}/enviar-recibo?email=${encodeURIComponent(usuario.email)}`,
+            token
+          ).catch(() => {});
         }
       } catch (e) {
         errores.push(`${usuario.nombre}: ${e instanceof ApiError ? e.message : "error de conexión"}`);
