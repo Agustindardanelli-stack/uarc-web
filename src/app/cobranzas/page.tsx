@@ -118,71 +118,65 @@ export default function CobranzasPage() {
   };
 
   const registrarCobranza = async () => {
-    if (!formRegistro.usuarioId) {
-      toast("Por favor seleccione un árbitro", "error");
-      return;
-    }
-    if (parseFloat(formRegistro.monto) <= 0) {
-      toast("El monto debe ser mayor a cero", "error");
-      return;
-    }
+  if (!formRegistro.usuarioId) {
+    toast("Por favor seleccione un árbitro", "error");
+    return;
+  }
+  if (parseFloat(formRegistro.monto) <= 0) {
+    toast("El monto debe ser mayor a cero", "error");
+    return;
+  }
+
+  if (!token) return;
+  setLoading(true);
+
+  try {
+    const payload: Record<string, unknown> = {
+      usuario_id: parseInt(formRegistro.usuarioId),
+      fecha: formRegistro.fecha,
+      monto: parseFloat(formRegistro.monto),
+      tipo_documento: tipoDocumento,
+    };
+
     if (tipoDocumento === "factura") {
-      if (!formRegistro.numeroFactura.trim()) {
-        toast("Por favor ingrese el número de factura", "error");
-        return;
-      }
-      if (!formRegistro.razonSocial.trim()) {
-        toast("Por favor ingrese la razón social", "error");
-        return;
-      }
+      payload.numero_factura = formRegistro.numeroFactura;
+      payload.razon_social = formRegistro.razonSocial;
     }
+    if (formRegistro.retencionId) payload.retencion_id = parseInt(formRegistro.retencionId);
+    if (formRegistro.descripcion) payload.descripcion = formRegistro.descripcion;
 
-    if (!token) return;
-    setLoading(true);
-    try {
-      const payload: Record<string, unknown> = {
-        usuario_id: parseInt(formRegistro.usuarioId),
-        fecha: formRegistro.fecha,
-        monto: parseFloat(formRegistro.monto),
-        tipo_documento: tipoDocumento,
-      };
+    await apiPost("/cobranzas", token, payload);
 
-      if (tipoDocumento === "factura") {
-        payload.numero_factura = formRegistro.numeroFactura;
-        payload.razon_social = formRegistro.razonSocial;
-      }
-      if (formRegistro.retencionId) payload.retencion_id = parseInt(formRegistro.retencionId);
-      if (formRegistro.descripcion) payload.descripcion = formRegistro.descripcion;
+    toast(
+      tipoDocumento === "factura" 
+        ? "Factura registrada exitosamente" 
+        : "Cobranza registrada exitosamente", 
+      "success"
+    );
 
-      const data = await apiPost<{ email_enviado?: boolean; email_destinatario?: string }>(
-        "/cobranzas",
-        token,
-        payload
-      );
+    // Resetear el formulario
+    setFormRegistro({
+      usuarioId: "",
+      fecha: new Date().toISOString().slice(0, 10),
+      numeroFactura: "",
+      razonSocial: "",
+      retencionId: "",
+      monto: "",
+      descripcion: "",
+    });
+    setTipoDocumento("recibo");
 
-      if (tipoDocumento === "recibo" && data.email_enviado) {
-        toast(`Cobranza registrada. Recibo enviado a ${data.email_destinatario}`, "success");
-      } else {
-        toast(tipoDocumento === "factura" ? "Factura registrada exitosamente" : "Cobranza registrada exitosamente", "success");
-      }
+    // Actualizar listado y cambiar a la pestaña 'listar'
+    await buscarCobranzas(token);
+    setActiveTab("listar");
 
-      setFormRegistro({
-        usuarioId: "",
-        fecha: new Date().toISOString().slice(0, 10),
-        numeroFactura: "",
-        razonSocial: "",
-        retencionId: "",
-        monto: "",
-        descripcion: "",
-      });
-      setTipoDocumento("recibo");
-      await buscarCobranzas(token);
-    } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Error al registrar cobranza", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (e) {
+    toast(e instanceof ApiError ? e.message : "Error al registrar cobranza", "error");
+  } finally {
+    // Garantiza que el botón salga del estado "Registrando..."
+    setLoading(false); 
+  }
+};
 
   const buscarCobranzasPorUsuario = async () => {
     if (!usuarioSeleccionado) {
