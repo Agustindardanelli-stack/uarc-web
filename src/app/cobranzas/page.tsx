@@ -7,6 +7,16 @@ import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 import type { Usuario, Retencion, Cobranza } from "@/lib/types";
+import {
+  FilePlus,
+  List,
+  Search,
+  Save,
+  X,
+  Pencil,
+  Trash2,
+  Eye,
+} from "lucide-react";
 
 interface FormRegistro {
   usuarioId: string;
@@ -118,65 +128,62 @@ export default function CobranzasPage() {
   };
 
   const registrarCobranza = async () => {
-  if (!formRegistro.usuarioId) {
-    toast("Por favor seleccione un árbitro", "error");
-    return;
-  }
-  if (parseFloat(formRegistro.monto) <= 0) {
-    toast("El monto debe ser mayor a cero", "error");
-    return;
-  }
-
-  if (!token) return;
-  setLoading(true);
-
-  try {
-    const payload: Record<string, unknown> = {
-      usuario_id: parseInt(formRegistro.usuarioId),
-      fecha: formRegistro.fecha,
-      monto: parseFloat(formRegistro.monto),
-      tipo_documento: tipoDocumento,
-    };
-
-    if (tipoDocumento === "factura") {
-      payload.numero_factura = formRegistro.numeroFactura;
-      payload.razon_social = formRegistro.razonSocial;
+    if (!formRegistro.usuarioId) {
+      toast("Por favor seleccione un árbitro", "error");
+      return;
     }
-    if (formRegistro.retencionId) payload.retencion_id = parseInt(formRegistro.retencionId);
-    if (formRegistro.descripcion) payload.descripcion = formRegistro.descripcion;
+    if (parseFloat(formRegistro.monto) <= 0) {
+      toast("El monto debe ser mayor a cero", "error");
+      return;
+    }
 
-    await apiPost("/cobranzas", token, payload);
+    if (!token) return;
+    setLoading(true);
 
-    toast(
-      tipoDocumento === "factura" 
-        ? "Factura registrada exitosamente" 
-        : "Cobranza registrada exitosamente", 
-      "success"
-    );
+    try {
+      const payload: Record<string, unknown> = {
+        usuario_id: parseInt(formRegistro.usuarioId),
+        fecha: formRegistro.fecha,
+        monto: parseFloat(formRegistro.monto),
+        tipo_documento: tipoDocumento,
+      };
 
-    // Resetear el formulario
-    setFormRegistro({
-      usuarioId: "",
-      fecha: new Date().toISOString().slice(0, 10),
-      numeroFactura: "",
-      razonSocial: "",
-      retencionId: "",
-      monto: "",
-      descripcion: "",
-    });
-    setTipoDocumento("recibo");
+      if (tipoDocumento === "factura") {
+        payload.numero_factura = formRegistro.numeroFactura;
+        payload.razon_social = formRegistro.razonSocial;
+      }
+      if (formRegistro.retencionId) payload.retencion_id = parseInt(formRegistro.retencionId);
+      if (formRegistro.descripcion) payload.descripcion = formRegistro.descripcion;
 
-    // Actualizar listado y cambiar a la pestaña 'listar'
-    await buscarCobranzas(token);
-    setActiveTab("listar");
+      await apiPost("/cobranzas", token, payload);
 
-  } catch (e) {
-    toast(e instanceof ApiError ? e.message : "Error al registrar cobranza", "error");
-  } finally {
-    // Garantiza que el botón salga del estado "Registrando..."
-    setLoading(false); 
-  }
-};
+      toast(
+        tipoDocumento === "factura"
+          ? "Factura registrada exitosamente"
+          : "Cobranza registrada exitosamente",
+        "success"
+      );
+
+      setFormRegistro({
+        usuarioId: "",
+        fecha: new Date().toISOString().slice(0, 10),
+        numeroFactura: "",
+        razonSocial: "",
+        retencionId: "",
+        monto: "",
+        descripcion: "",
+      });
+      setTipoDocumento("recibo");
+
+      await buscarCobranzas(token);
+      setActiveTab("listar");
+
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Error al registrar cobranza", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const buscarCobranzasPorUsuario = async () => {
     if (!usuarioSeleccionado) {
@@ -279,284 +286,77 @@ export default function CobranzasPage() {
   const obtenerNombreUsuario = (usuarioId: number): string =>
     usuarios.find((u) => u.id === usuarioId)?.nombre ?? "Desconocido";
 
+  const tabs: { id: "registrar" | "listar" | "buscar"; label: string; icon: typeof FilePlus }[] = [
+    { id: "registrar", label: "Registrar Cobranza", icon: FilePlus },
+    { id: "listar", label: "Listado de Cobranzas", icon: List },
+    { id: "buscar", label: "Buscar Cobranza", icon: Search },
+  ];
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-100 text-slate-800">
       <Sidebar />
-      <main className="flex-1 p-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            Gestión de Cobranzas
-          </h1>
+      <main className="flex-1 min-w-0 w-full pt-16 px-4 pb-8 lg:pt-8 lg:px-8">
 
-          <div className="flex space-x-2 mb-6 border-b border-gray-200">
-            {(["registrar", "listar", "buscar"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-semibold rounded-t-lg transition-colors ${
-                  activeTab === tab
-                    ? "bg-white text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {tab === "registrar" && "Registrar Cobranza"}
-                {tab === "listar" && "Listado de Cobranzas"}
-                {tab === "buscar" && "Buscar Cobranza"}
-              </button>
-            ))}
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Gestión de Cobranzas</h1>
+          <p className="text-sm text-slate-500">Recibos y facturas cobradas a árbitros</p>
+        </div>
 
-          {activeTab === "registrar" && (
-            <div className="bg-white p-8 rounded-lg shadow">
-              <h2 className="text-xl font-bold mb-6 text-gray-900">
-                Registrar Cobranza
-              </h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Tipo de Documento:
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-6 bg-white border border-slate-200 rounded-lg p-1 shadow-sm w-full sm:w-fit">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === id
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab Registrar ── */}
+        {activeTab === "registrar" && (
+          <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-5">Registrar Cobranza</h2>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">Tipo de Documento</label>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={tipoDocumento === "recibo"}
+                      onChange={() => setTipoDocumento("recibo")}
+                      className="accent-slate-900 w-4 h-4"
+                    />
+                    Recibo
                   </label>
-                  <div className="flex space-x-6">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        checked={tipoDocumento === "recibo"}
-                        onChange={() => setTipoDocumento("recibo")}
-                        className="mr-2"
-                      />
-                      <span className="text-gray-700">Recibo</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        checked={tipoDocumento === "factura"}
-                        onChange={() => setTipoDocumento("factura")}
-                        className="mr-2"
-                      />
-                      <span className="text-gray-700">Factura/Recibo</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Pagador/Cobrador:
-                    </label>
-                    <select
-                      value={formRegistro.usuarioId}
-                      onChange={(e) =>
-                        setFormRegistro({ ...formRegistro, usuarioId: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Seleccione un árbitro</option>
-                      {usuarios.map((u) => (
-                        <option key={u.id} value={u.id}>{u.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Fecha:
-                    </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                     <input
-                      type="date"
-                      value={formRegistro.fecha}
-                      onChange={(e) =>
-                        setFormRegistro({ ...formRegistro, fecha: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
+                      type="radio"
+                      checked={tipoDocumento === "factura"}
+                      onChange={() => setTipoDocumento("factura")}
+                      className="accent-slate-900 w-4 h-4"
                     />
-                  </div>
-
-                  {tipoDocumento === "factura" && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Número de Factura/Recibo:
-                        </label>
-                        <input
-                          type="text"
-                          value={formRegistro.numeroFactura}
-                          onChange={(e) =>
-                            setFormRegistro({ ...formRegistro, numeroFactura: e.target.value })
-                          }
-                          placeholder="Ingrese número de factura..."
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Razón Social:
-                        </label>
-                        <input
-                          type="text"
-                          value={formRegistro.razonSocial}
-                          onChange={(e) =>
-                            setFormRegistro({ ...formRegistro, razonSocial: e.target.value })
-                          }
-                          placeholder="Ingrese razón social..."
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Tipo de Retención:
-                    </label>
-                    <select
-                      value={formRegistro.retencionId}
-                      onChange={(e) => handleRetencionChange(e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">Seleccione una retención</option>
-                      {retenciones.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nombre} (${r.monto})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Monto:
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formRegistro.monto}
-                      onChange={(e) =>
-                        setFormRegistro({ ...formRegistro, monto: e.target.value })
-                      }
-                      placeholder="0.00"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Descripción/Notas:
-                    </label>
-                    <input
-                      type="text"
-                      value={formRegistro.descripcion}
-                      onChange={(e) =>
-                        setFormRegistro({ ...formRegistro, descripcion: e.target.value })
-                      }
-                      placeholder="Ingrese detalles adicionales..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={registrarCobranza}
-                    disabled={loading}
-                    className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors ${
-                      loading ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {loading
-                      ? "Registrando..."
-                      : tipoDocumento === "factura"
-                      ? "Registrar Factura"
-                      : "Registrar Cobranza"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "listar" && (
-            <div className="bg-white p-8 rounded-lg shadow">
-              <h2 className="text-xl font-bold mb-6 text-gray-900">
-                Listado de Cobranzas
-              </h2>
-              <div className="flex space-x-4 mb-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Desde:</label>
-                  <input
-                    type="date"
-                    value={fechaDesde}
-                    onChange={(e) => setFechaDesde(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Hasta:</label>
-                  <input
-                    type="date"
-                    value={fechaHasta}
-                    onChange={(e) => setFechaHasta(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={() => buscarCobranzas()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-blue-600 text-white">
-                      <th className="p-3 text-left">ID</th>
-                      <th className="p-3 text-left">Fecha</th>
-                      <th className="p-3 text-left">Árbitro</th>
-                      <th className="p-3 text-left">Retención</th>
-                      <th className="p-3 text-right">Monto</th>
-                      <th className="p-3 text-left">Descripción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cobranzas.map((c, idx) => (
-                      <tr key={c.id} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                        <td className="p-3 border">{c.id}</td>
-                        <td className="p-3 border">{formatDate(c.fecha)}</td>
-                        <td className="p-3 border">{obtenerNombreUsuario(c.usuario_id)}</td>
-                        <td className="p-3 border">{c.retencion?.nombre || "N/A"}</td>
-                        <td className="p-3 border text-right">${c.monto.toFixed(2)}</td>
-                        <td className="p-3 border">{c.descripcion || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-4 text-right">
-                <p className="text-lg font-bold text-gray-900">
-                  Total: ${calcularTotal().toFixed(2)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "buscar" && (
-            <div className="bg-white p-8 rounded-lg shadow">
-              <h2 className="text-xl font-bold mb-6 text-gray-900">
-                Buscar Cobranza
-              </h2>
-
-              <div className="flex space-x-4 mb-6">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Seleccionar árbitro:
+                    Factura/Recibo
                   </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Pagador/Cobrador</label>
                   <select
-                    value={usuarioSeleccionado}
-                    onChange={(e) => setUsuarioSeleccionado(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    value={formRegistro.usuarioId}
+                    onChange={(e) => setFormRegistro({ ...formRegistro, usuarioId: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   >
                     <option value="">Seleccione un árbitro</option>
                     {usuarios.map((u) => (
@@ -564,58 +364,277 @@ export default function CobranzasPage() {
                     ))}
                   </select>
                 </div>
-                <div className="flex items-end space-x-2">
-                  <button
-                    onClick={buscarCobranzasPorUsuario}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Fecha</label>
+                  <input
+                    type="date"
+                    value={formRegistro.fecha}
+                    onChange={(e) => setFormRegistro({ ...formRegistro, fecha: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+
+                {tipoDocumento === "factura" && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Número de Factura/Recibo</label>
+                      <input
+                        type="text"
+                        value={formRegistro.numeroFactura}
+                        onChange={(e) => setFormRegistro({ ...formRegistro, numeroFactura: e.target.value })}
+                        placeholder="Ingrese número de factura..."
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Razón Social</label>
+                      <input
+                        type="text"
+                        value={formRegistro.razonSocial}
+                        onChange={(e) => setFormRegistro({ ...formRegistro, razonSocial: e.target.value })}
+                        placeholder="Ingrese razón social..."
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Tipo de Retención</label>
+                  <select
+                    value={formRegistro.retencionId}
+                    onChange={(e) => handleRetencionChange(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   >
-                    Buscar
-                  </button>
-                  {cobranzaActual && (
-                    <>
-                      <button
-                        onClick={iniciarEdicion}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={eliminarCobranza}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg"
-                      >
-                        Eliminar
-                      </button>
-                    </>
-                  )}
+                    <option value="">Seleccione una retención</option>
+                    {retenciones.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.nombre} (${r.monto})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Monto</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formRegistro.monto}
+                    onChange={(e) => setFormRegistro({ ...formRegistro, monto: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Descripción/Notas</label>
+                  <input
+                    type="text"
+                    value={formRegistro.descripcion}
+                    onChange={(e) => setFormRegistro({ ...formRegistro, descripcion: e.target.value })}
+                    placeholder="Ingrese detalles adicionales..."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
                 </div>
               </div>
 
-              {cobranzasUsuario.length > 0 && (
-                <div className="mb-6 overflow-x-auto">
-                  <table className="w-full border-collapse">
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={registrarCobranza}
+                  disabled={loading}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium py-2.5 px-8 rounded-lg text-sm transition-colors"
+                >
+                  <Save size={15} />
+                  {loading
+                    ? "Registrando..."
+                    : tipoDocumento === "factura"
+                    ? "Registrar Factura"
+                    : "Registrar Cobranza"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab Listar ── */}
+        {activeTab === "listar" && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Listado de Cobranzas</h2>
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <div className="w-full sm:w-auto">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Desde</label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+                <div className="w-full sm:w-auto">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Hasta</label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+                <button
+                  onClick={() => buscarCobranzas()}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-6 rounded-lg text-sm transition-colors"
+                >
+                  <Search size={15} />
+                  Buscar
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs lg:text-sm text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white text-xs">
+                    <th className="px-3 py-3 font-semibold">ID</th>
+                    <th className="px-3 py-3 font-semibold whitespace-nowrap">Fecha</th>
+                    <th className="px-3 py-3 font-semibold min-w-[120px]">Árbitro</th>
+                    <th className="px-3 py-3 font-semibold whitespace-nowrap">Retención</th>
+                    <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Monto</th>
+                    <th className="px-3 py-3 font-semibold min-w-[140px]">Descripción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {cobranzas.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-slate-400">
+                        No hay cobranzas en el rango seleccionado.
+                      </td>
+                    </tr>
+                  ) : (
+                    cobranzas.map((c, idx) => (
+                      <tr
+                        key={c.id}
+                        className={
+                          idx % 2 === 0
+                            ? "bg-white hover:bg-slate-50"
+                            : "bg-slate-50/50 hover:bg-slate-100/80"
+                        }
+                      >
+                        <td className="px-3 py-2.5 text-slate-400 font-mono text-xs">#{c.id}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">{formatDate(c.fecha)}</td>
+                        <td className="px-3 py-2.5 text-slate-800 font-medium">{obtenerNombreUsuario(c.usuario_id)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{c.retencion?.nombre || "N/A"}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-emerald-700 whitespace-nowrap">
+                          ${c.monto.toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{c.descripcion || "-"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="p-3 text-center text-xs text-slate-400 lg:hidden border-t border-slate-100">
+              Deslizá horizontalmente para ver todas las columnas.
+            </p>
+
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-200 bg-slate-50/50 text-right">
+              <span className="text-sm font-bold text-slate-900">
+                Total: ${calcularTotal().toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab Buscar ── */}
+        {activeTab === "buscar" && (
+          <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-5">Buscar Cobranza</h2>
+
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Seleccionar árbitro</label>
+                <select
+                  value={usuarioSeleccionado}
+                  onChange={(e) => setUsuarioSeleccionado(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                >
+                  <option value="">Seleccione un árbitro</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>{u.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <button
+                  onClick={buscarCobranzasPorUsuario}
+                  className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-6 rounded-lg text-sm transition-colors"
+                >
+                  <Search size={15} />
+                  Buscar
+                </button>
+                {cobranzaActual && (
+                  <>
+                    <button
+                      onClick={iniciarEdicion}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm transition-colors"
+                    >
+                      <Pencil size={14} />
+                      Editar
+                    </button>
+                    <button
+                      onClick={eliminarCobranza}
+                      className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {cobranzasUsuario.length > 0 && (
+              <div className="mb-6 rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs lg:text-sm text-left border-collapse">
                     <thead>
-                      <tr className="bg-blue-600 text-white">
-                        <th className="p-3 text-left">ID</th>
-                        <th className="p-3 text-left">Fecha</th>
-                        <th className="p-3 text-left">Retención</th>
-                        <th className="p-3 text-right">Monto</th>
-                        <th className="p-3 text-left">Descripción</th>
-                        <th className="p-3 text-center">Acciones</th>
+                      <tr className="bg-slate-900 text-white text-xs">
+                        <th className="px-3 py-3 font-semibold">ID</th>
+                        <th className="px-3 py-3 font-semibold whitespace-nowrap">Fecha</th>
+                        <th className="px-3 py-3 font-semibold whitespace-nowrap">Retención</th>
+                        <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Monto</th>
+                        <th className="px-3 py-3 font-semibold min-w-[120px]">Descripción</th>
+                        <th className="px-3 py-3 font-semibold text-center whitespace-nowrap">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-200">
                       {cobranzasUsuario.map((c, idx) => (
-                        <tr key={c.id} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                          <td className="p-3 border">{c.id}</td>
-                          <td className="p-3 border">{formatDate(c.fecha)}</td>
-                          <td className="p-3 border">{c.retencion?.nombre || "N/A"}</td>
-                          <td className="p-3 border text-right">${c.monto.toFixed(2)}</td>
-                          <td className="p-3 border">{c.descripcion || "-"}</td>
-                          <td className="p-3 border text-center">
+                        <tr
+                          key={c.id}
+                          className={
+                            cobranzaActual?.id === c.id
+                              ? "bg-blue-50"
+                              : idx % 2 === 0
+                              ? "bg-white hover:bg-slate-50"
+                              : "bg-slate-50/50 hover:bg-slate-100/80"
+                          }
+                        >
+                          <td className="px-3 py-2.5 text-slate-400 font-mono text-xs">#{c.id}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">{formatDate(c.fecha)}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{c.retencion?.nombre || "N/A"}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-emerald-700 whitespace-nowrap">
+                            ${c.monto.toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{c.descripcion || "-"}</td>
+                          <td className="px-3 py-2.5 text-center">
                             <button
                               onClick={() => seleccionarCobranza(c.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
+                              className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
                             >
+                              <Eye size={13} />
                               Ver
                             </button>
                           </td>
@@ -624,140 +643,130 @@ export default function CobranzasPage() {
                     </tbody>
                   </table>
                 </div>
-              )}
+              </div>
+            )}
 
-              {cobranzaActual && !editando && (
-                <div className="bg-gray-50 p-8 rounded-lg shadow">
-                  <h3 className="text-lg font-bold mb-4 text-gray-900">
-                    Detalle de Cobranza #{cobranzaActual.id}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
+            {cobranzaActual && !editando && (
+              <div className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
+                <h3 className="text-base font-semibold text-slate-900 mb-4">
+                  Detalle de Cobranza #{cobranzaActual.id}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-500">Fecha</label>
+                    <p className="text-slate-900 font-medium">{formatDate(cobranzaActual.fecha)}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-500">Tipo de Documento</label>
+                    <p className="text-slate-900 font-medium capitalize">{cobranzaActual.tipo_documento || "Recibo"}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-500">Monto</label>
+                    <p className="text-emerald-700 font-semibold">${cobranzaActual.monto.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-500">Retención</label>
+                    <p className="text-slate-900 font-medium">{cobranzaActual.retencion?.nombre || "N/A"}</p>
+                  </div>
+                  {cobranzaActual.numero_factura && (
                     <div>
-                      <label className="text-sm font-semibold text-gray-700">Fecha:</label>
-                      <p className="text-gray-900">{formatDate(cobranzaActual.fecha)}</p>
+                      <label className="text-xs font-medium text-slate-500">Número de Factura</label>
+                      <p className="text-slate-900 font-medium">{cobranzaActual.numero_factura}</p>
                     </div>
+                  )}
+                  {cobranzaActual.razon_social && (
                     <div>
-                      <label className="text-sm font-semibold text-gray-700">Tipo de Documento:</label>
-                      <p className="text-gray-900">{cobranzaActual.tipo_documento || "Recibo"}</p>
+                      <label className="text-xs font-medium text-slate-500">Razón Social</label>
+                      <p className="text-slate-900 font-medium">{cobranzaActual.razon_social}</p>
                     </div>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Monto:</label>
-                      <p className="text-gray-900">${cobranzaActual.monto.toFixed(2)}</p>
+                  )}
+                  {cobranzaActual.descripcion && (
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-medium text-slate-500">Descripción</label>
+                      <p className="text-slate-900">{cobranzaActual.descripcion}</p>
                     </div>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Retención:</label>
-                      <p className="text-gray-900">{cobranzaActual.retencion?.nombre || "N/A"}</p>
-                    </div>
-                    {cobranzaActual.numero_factura && (
+                  )}
+                </div>
+              </div>
+            )}
+
+            {cobranzaActual && editando && (
+              <div className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
+                <h3 className="text-base font-semibold text-slate-900 mb-4">
+                  Editar Cobranza #{cobranzaActual.id}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Fecha</label>
+                    <input
+                      type="date"
+                      value={formEdicion.fecha}
+                      onChange={(e) => setFormEdicion({ ...formEdicion, fecha: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Monto</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formEdicion.monto}
+                      onChange={(e) => setFormEdicion({ ...formEdicion, monto: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  {formEdicion.tipoDocumento === "factura" && (
+                    <>
                       <div>
-                        <label className="text-sm font-semibold text-gray-700">Número de Factura:</label>
-                        <p className="text-gray-900">{cobranzaActual.numero_factura}</p>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Número de Factura</label>
+                        <input
+                          type="text"
+                          value={formEdicion.numeroFactura}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, numeroFactura: e.target.value })}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                        />
                       </div>
-                    )}
-                    {cobranzaActual.razon_social && (
                       <div>
-                        <label className="text-sm font-semibold text-gray-700">Razón Social:</label>
-                        <p className="text-gray-900">{cobranzaActual.razon_social}</p>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Razón Social</label>
+                        <input
+                          type="text"
+                          value={formEdicion.razonSocial}
+                          onChange={(e) => setFormEdicion({ ...formEdicion, razonSocial: e.target.value })}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                        />
                       </div>
-                    )}
-                    {cobranzaActual.descripcion && (
-                      <div className="col-span-2">
-                        <label className="text-sm font-semibold text-gray-700">Descripción:</label>
-                        <p className="text-gray-900">{cobranzaActual.descripcion}</p>
-                      </div>
-                    )}
+                    </>
+                  )}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Descripción</label>
+                    <input
+                      type="text"
+                      value={formEdicion.descripcion}
+                      onChange={(e) => setFormEdicion({ ...formEdicion, descripcion: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                    />
                   </div>
                 </div>
-              )}
-
-              {cobranzaActual && editando && (
-                <div className="bg-gray-50 p-8 rounded-lg shadow">
-                  <h3 className="text-lg font-bold mb-4 text-gray-900">
-                    Editar Cobranza #{cobranzaActual.id}
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha:</label>
-                      <input
-                        type="date"
-                        value={formEdicion.fecha}
-                        onChange={(e) => setFormEdicion({ ...formEdicion, fecha: e.target.value })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Monto:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formEdicion.monto}
-                        onChange={(e) => setFormEdicion({ ...formEdicion, monto: e.target.value })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                    {formEdicion.tipoDocumento === "factura" && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Número de Factura:
-                          </label>
-                          <input
-                            type="text"
-                            value={formEdicion.numeroFactura}
-                            onChange={(e) =>
-                              setFormEdicion({ ...formEdicion, numeroFactura: e.target.value })
-                            }
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Razón Social:
-                          </label>
-                          <input
-                            type="text"
-                            value={formEdicion.razonSocial}
-                            onChange={(e) =>
-                              setFormEdicion({ ...formEdicion, razonSocial: e.target.value })
-                            }
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                          />
-                        </div>
-                      </>
-                    )}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Descripción:
-                      </label>
-                      <input
-                        type="text"
-                        value={formEdicion.descripcion}
-                        onChange={(e) =>
-                          setFormEdicion({ ...formEdicion, descripcion: e.target.value })
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div className="flex justify-center space-x-4 mt-6">
-                      <button
-                        onClick={guardarEdicion}
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg"
-                      >
-                        Guardar
-                      </button>
-                      <button
-                        onClick={() => setEditando(false)}
-                        className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex flex-col sm:flex-row justify-center gap-2 mt-6">
+                  <button
+                    onClick={guardarEdicion}
+                    className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-6 rounded-lg text-sm transition-colors"
+                  >
+                    <Save size={15} />
+                    Guardar
+                  </button>
+                  <button
+                    onClick={() => setEditando(false)}
+                    className="inline-flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2.5 px-6 rounded-lg text-sm transition-colors"
+                  >
+                    <X size={15} />
+                    Cancelar
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
