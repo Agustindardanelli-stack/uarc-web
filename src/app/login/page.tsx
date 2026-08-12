@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Loader2, AlertCircle, LogIn } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,61 +47,78 @@ export default function LoginPage() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !loading) handleLogin();
+  };
+
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-800 to-sky-400 p-6">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow-lg p-8">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-6">
+      <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm p-8">
         <div className="flex justify-center mb-6">
-          <Image
-            src="/UarcLogo.png"
-            alt="Logo"
-            width={96}
-            height={96}
-            className="object-contain"
-          />
+          <div className="bg-slate-900 p-4 rounded-xl">
+            <Image
+              src="/UarcLogo.png"
+              alt="Logo"
+              width={64}
+              height={64}
+              className="object-contain"
+            />
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+        <h1 className="text-2xl font-bold text-center text-slate-900 mb-1">
           Gestión Integral UARC
         </h1>
-        <p className="text-center text-gray-500 mb-6">Iniciar Sesión</p>
+        <p className="text-center text-slate-500 text-sm mb-6">Iniciar Sesión</p>
 
         {errorMsg && (
-          <div className="bg-red-100 text-red-800 text-sm p-3 rounded mb-4">
+          <div className="flex items-center gap-2 bg-rose-50 border-l-4 border-rose-400 text-rose-800 text-sm p-3 rounded-lg mb-4">
+            <AlertCircle size={16} className="shrink-0" />
             {errorMsg}
           </div>
         )}
 
-        <div className="space-y-4">
-          <input
-            type="email"
-            placeholder="Ingrese su email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-          />
-          <input
-            type="password"
-            placeholder="Ingrese su contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-          />
+        <div className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+            <input
+              type="email"
+              placeholder="Ingrese su email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Contraseña</label>
+            <input
+              type="password"
+              placeholder="Ingrese su contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+            />
+          </div>
           <button
             onClick={handleLogin}
             disabled={loading}
-            className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded ${
-              loading && "opacity-50 cursor-not-allowed"
-            }`}
+            className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
+            {loading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <LogIn size={16} />
+            )}
             {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
         </div>
 
-        <p className="text-xs text-gray-500 text-center mt-6">
-          Si no tiene una cuenta o ha olvidado su contraseña, contacte al
-          administrador.
+        <p className="text-xs text-slate-500 text-center mt-6">
+          Si no tiene una cuenta o ha olvidado su contraseña, contacte al administrador.
         </p>
 
-        <p className="text-center text-xs text-gray-400 mt-4">
+        <p className="text-center text-xs text-slate-400 mt-4">
           © 2025 Unión de Árbitros Río Cuarto. Todos los derechos reservados.
         </p>
       </div>
