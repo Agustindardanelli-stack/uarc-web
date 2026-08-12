@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  Percent,
+  Tags,
+  Save,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
+
 interface Retencion {
   id: number;
   nombre: string;
@@ -234,83 +244,94 @@ export default function ImportesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const alertColors = {
-    success: "bg-green-50 border-green-400 text-green-800",
-    error: "bg-red-50 border-red-400 text-red-800",
-    warning: "bg-yellow-50 border-yellow-400 text-yellow-800",
+  const alertStyles: Record<string, string> = {
+    success: "bg-emerald-50 border-emerald-400 text-emerald-800",
+    error: "bg-rose-50 border-rose-400 text-rose-800",
+    warning: "bg-amber-50 border-amber-400 text-amber-800",
   };
 
+  const tabs: { id: Tab; label: string; icon: typeof Percent }[] = [
+    { id: "retenciones", label: "Retenciones", icon: Percent },
+    { id: "categorias", label: "Categorías", icon: Tags },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-100 text-slate-800 p-4 lg:p-8">
       <div className="max-w-6xl mx-auto">
 
         {/* Alert */}
         {alert && (
-          <div className={`mb-4 border-l-4 rounded p-3 text-sm ${alertColors[alert.type]}`}>
+          <div className={`mb-4 border-l-4 rounded-lg p-3 text-sm ${alertStyles[alert.type]}`}>
             {alert.message}
           </div>
         )}
-         <div className="flex items-center gap-4 mb-6">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Volver al Dashboard
-          </Link>
-        </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Gestión de Importes</h1>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors mb-4"
+        >
+          <ArrowLeft size={16} />
+          Volver al Dashboard
+        </Link>
+
+        <h1 className="text-2xl font-bold text-slate-900 mb-6">Gestión de Importes</h1>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          {(["retenciones", "categorias"] as Tab[]).map((tab) => (
+        <div className="inline-flex bg-white border border-slate-200 rounded-lg p-1 mb-6 shadow-sm">
+          {tabs.map(({ id, label, icon: Icon }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 text-sm font-medium capitalize transition-colors ${
-                activeTab === tab
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700"
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === id
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Icon size={15} />
+              {label}
             </button>
           ))}
         </div>
 
         {/* ── Tab Retenciones ── */}
         {activeTab === "retenciones" && (
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Lista */}
-            <div className="flex-1">
-              <h2 className="text-base font-semibold text-gray-700 mb-3">Retenciones Existentes</h2>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                Retenciones Existentes
+              </h2>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-                    <tr>
-                      <th className="px-4 py-3 text-left">ID</th>
-                      <th className="px-4 py-3 text-left">Nombre</th>
-                      <th className="px-4 py-3 text-right">Monto</th>
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-xs">
+                      <th className="px-4 py-3 text-left font-semibold">ID</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                      <th className="px-4 py-3 text-right font-semibold">Monto</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-200">
                     {retenciones.length === 0 && (
-                      <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400">Sin datos</td></tr>
+                      <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">Sin datos</td></tr>
                     )}
-                    {retenciones.map((r) => (
+                    {retenciones.map((r, idx) => (
                       <tr
                         key={r.id}
                         onClick={() => onSelectRetencion(r)}
-                        className={`cursor-pointer border-t border-gray-100 hover:bg-blue-50 transition-colors ${
-                          selectedRetencion?.id === r.id ? "bg-blue-50" : ""
+                        className={`cursor-pointer transition-colors ${
+                          selectedRetencion?.id === r.id
+                            ? "bg-blue-50"
+                            : idx % 2 === 0
+                            ? "bg-white hover:bg-slate-50"
+                            : "bg-slate-50/50 hover:bg-slate-100/80"
                         }`}
                       >
-                        <td className="px-4 py-2">{r.id}</td>
-                        <td className="px-4 py-2">{r.nombre}</td>
-                        <td className="px-4 py-2 text-right">${r.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">#{r.id}</td>
+                        <td className="px-4 py-2.5 text-slate-800 font-medium">{r.nombre}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-slate-900">
+                          ${r.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -319,75 +340,82 @@ export default function ImportesPage() {
             </div>
 
             {/* Formularios */}
-            <div className="w-72 flex flex-col gap-4">
+            <div className="w-full lg:w-72 flex flex-col gap-4 shrink-0">
               {/* Agregar */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Agregar Retención</h3>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                  Agregar Retención
+                </h3>
                 <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Nombre</label>
                   <input
                     type="text"
                     value={retNombre}
                     onChange={(e) => setRetNombre(e.target.value)}
                     placeholder="Nombre de la retención"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   />
                 </div>
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Monto</label>
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Monto</label>
                   <input
                     type="number"
                     value={retMonto}
                     onChange={(e) => setRetMonto(parseFloat(e.target.value) || 0)}
                     min={0}
                     step={100}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   />
                 </div>
                 <button
                   onClick={onGuardarRetencion}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
                 >
+                  <Save size={15} />
                   Guardar
                 </button>
               </div>
 
               {/* Editar */}
               {selectedRetencion && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-700 mb-1">Editar/Eliminar Retención</h3>
-                  <p className="text-xs text-gray-400 mb-3">ID: {selectedRetencion.id}</p>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Editar/Eliminar Retención
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-3">ID: {selectedRetencion.id}</p>
                   <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nombre</label>
                     <input
                       type="text"
                       value={retNombreEdit}
                       onChange={(e) => setRetNombreEdit(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                     />
                   </div>
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Monto</label>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Monto</label>
                     <input
                       type="number"
                       value={retMontoEdit}
                       onChange={(e) => setRetMontoEdit(parseFloat(e.target.value) || 0)}
                       min={0}
                       step={100}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={onActualizarRetencion}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition-colors"
                     >
+                      <Pencil size={14} />
                       Actualizar
                     </button>
                     <button
                       onClick={onEliminarRetencion}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded text-sm transition-colors"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2 rounded-lg text-sm transition-colors"
                     >
+                      <Trash2 size={14} />
                       Eliminar
                     </button>
                   </div>
@@ -399,32 +427,38 @@ export default function ImportesPage() {
 
         {/* ── Tab Categorias ── */}
         {activeTab === "categorias" && (
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Lista */}
-            <div className="flex-1">
-              <h2 className="text-base font-semibold text-gray-700 mb-3">Categorías Existentes</h2>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                Categorías Existentes
+              </h2>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-                    <tr>
-                      <th className="px-4 py-3 text-left">ID</th>
-                      <th className="px-4 py-3 text-left">Nombre</th>
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-xs">
+                      <th className="px-4 py-3 text-left font-semibold">ID</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nombre</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-200">
                     {categorias.length === 0 && (
-                      <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-400">Sin datos</td></tr>
+                      <tr><td colSpan={2} className="px-4 py-6 text-center text-slate-400">Sin datos</td></tr>
                     )}
-                    {categorias.map((c) => (
+                    {categorias.map((c, idx) => (
                       <tr
                         key={c.id}
                         onClick={() => onSelectCategoria(c)}
-                        className={`cursor-pointer border-t border-gray-100 hover:bg-blue-50 transition-colors ${
-                          selectedCategoria?.id === c.id ? "bg-blue-50" : ""
+                        className={`cursor-pointer transition-colors ${
+                          selectedCategoria?.id === c.id
+                            ? "bg-blue-50"
+                            : idx % 2 === 0
+                            ? "bg-white hover:bg-slate-50"
+                            : "bg-slate-50/50 hover:bg-slate-100/80"
                         }`}
                       >
-                        <td className="px-4 py-2">{c.id}</td>
-                        <td className="px-4 py-2">{c.nombre}</td>
+                        <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">#{c.id}</td>
+                        <td className="px-4 py-2.5 text-slate-800 font-medium">{c.nombre}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -433,53 +467,60 @@ export default function ImportesPage() {
             </div>
 
             {/* Formularios */}
-            <div className="w-72 flex flex-col gap-4">
+            <div className="w-full lg:w-72 flex flex-col gap-4 shrink-0">
               {/* Agregar */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Agregar Categoría</h3>
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                  Agregar Categoría
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Nombre</label>
                   <input
                     type="text"
                     value={catNombre}
                     onChange={(e) => setCatNombre(e.target.value)}
                     placeholder="Nombre de la categoría"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   />
                 </div>
                 <button
                   onClick={onGuardarCategoria}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
                 >
+                  <Save size={15} />
                   Guardar
                 </button>
               </div>
 
               {/* Editar */}
               {selectedCategoria && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-700 mb-1">Editar/Eliminar Categoría</h3>
-                  <p className="text-xs text-gray-400 mb-3">ID: {selectedCategoria.id}</p>
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Editar/Eliminar Categoría
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-3">ID: {selectedCategoria.id}</p>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nombre</label>
                     <input
                       type="text"
                       value={catNombreEdit}
                       onChange={(e) => setCatNombreEdit(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={onActualizarCategoria}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition-colors"
                     >
+                      <Pencil size={14} />
                       Actualizar
                     </button>
                     <button
                       onClick={onEliminarCategoria}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded text-sm transition-colors"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2 rounded-lg text-sm transition-colors"
                     >
+                      <Trash2 size={14} />
                       Eliminar
                     </button>
                   </div>
@@ -492,21 +533,27 @@ export default function ImportesPage() {
 
       {/* Confirm modal */}
       {confirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="font-semibold text-gray-800 mb-3">Confirmar eliminación</h3>
-            <p className="text-sm text-gray-600 whitespace-pre-line mb-5">{confirm.message}</p>
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 w-full max-w-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="bg-rose-50 text-rose-600 p-1.5 rounded-lg">
+                <AlertTriangle size={16} />
+              </div>
+              <h3 className="font-semibold text-slate-900">Confirmar eliminación</h3>
+            </div>
+            <p className="text-sm text-slate-600 whitespace-pre-line mb-5">{confirm.message}</p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setConfirm(null)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirm.onConfirm}
-                className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded font-medium"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition-colors"
               >
+                <Trash2 size={14} />
                 Eliminar
               </button>
             </div>
