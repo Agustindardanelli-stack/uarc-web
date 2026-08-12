@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { LogIn, ArrowRight, Landmark, ShieldCheck, Users } from "lucide-react";
 
 export default function HomePage() {
   const [message, setMessage] = useState("");
@@ -15,495 +16,107 @@ export default function HomePage() {
   }, []);
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col">
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-        html, body { height: 100%; }
-
-        .uarc-root {
-          min-height: 100vh;
-          width: 100%;
-          background: linear-gradient(135deg, #1a3a8f 0%, #1565c0 30%, #0288d1 65%, #00bcd4 100%);
-          font-family: 'Inter', sans-serif;
-          display: grid;
-          grid-template-rows: auto 1fr auto;
-          position: relative;
-          overflow: hidden;
-          color: white;
-        }
-
-        .blob {
-          position: absolute;
-          border-radius: 50%;
-          pointer-events: none;
-          filter: blur(90px);
-          opacity: 0.2;
-        }
-        .blob-1 { width: 650px; height: 650px; background: #90caf9; top: -200px; right: -150px; }
-        .blob-2 { width: 500px; height: 500px; background: #0d47a1; bottom: -150px; left: -100px; }
-        .blob-3 { width: 300px; height: 300px; background: #e0f7fa; top: 50%; left: 40%; opacity: 0.08; }
-
-        .dot-pattern {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px);
-          background-size: 32px 32px;
-        }
-
-        nav {
-          position: relative;
-          z-index: 20;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1.5rem 3rem;
-          border-bottom: 1px solid rgba(255,255,255,0.12);
-          backdrop-filter: blur(4px);
-          background: rgba(255,255,255,0.05);
-        }
-
-        .nav-left {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .nav-logo-img {
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1.5px solid rgba(255,255,255,0.35);
-        }
-
-        .nav-brand {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .nav-brand-name {
-          font-size: 1.1rem;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          line-height: 1;
-          color: white;
-        }
-
-        .nav-brand-sub {
-          font-size: 0.65rem;
-          font-weight: 400;
-          color: rgba(255,255,255,0.65);
-          letter-spacing: 0.04em;
-          margin-top: 2px;
-        }
-
-        .btn-nav-login {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.6rem 1.5rem;
-          background: rgba(255,255,255,0.15);
-          border: 1.5px solid rgba(255,255,255,0.4);
-          color: white;
-          font-family: 'Inter', sans-serif;
-          font-size: 0.82rem;
-          font-weight: 500;
-          border-radius: 8px;
-          text-decoration: none;
-          transition: background 0.18s;
-          cursor: pointer;
-          backdrop-filter: blur(4px);
-        }
-
-        .btn-nav-login:hover {
-          background: rgba(255,255,255,0.25);
-        }
-
-        .hero {
-          position: relative;
-          z-index: 10;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          align-items: center;
-          gap: 3rem;
-          padding: 4rem 3rem;
-          max-width: 1200px;
-          margin: 0 auto;
-          width: 100%;
-        }
-
-        .hero-left {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-          animation: fadeLeft 0.6s ease forwards;
-        }
-
-        @keyframes fadeLeft {
-          from { opacity: 0; transform: translateX(-24px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-
-        .eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.7rem;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.75);
-          font-weight: 500;
-        }
-
-        .eyebrow-dot {
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: #7ee8fa;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%,100% { opacity: 1; }
-          50%      { opacity: 0.3; }
-        }
-
-        .hero-title {
-          font-size: clamp(2.4rem, 4.5vw, 3.8rem);
-          font-weight: 800;
-          line-height: 1.12;
-          letter-spacing: -0.02em;
-          color: white;
-        }
-
-        .hero-title span {
-          display: block;
-          color: rgba(255,255,255,0.55);
-          font-weight: 300;
-          font-size: 0.6em;
-          letter-spacing: 0.01em;
-          margin-bottom: 0.2rem;
-        }
-
-        .hero-desc {
-          font-size: 1rem;
-          font-weight: 300;
-          line-height: 1.75;
-          color: rgba(255,255,255,0.7);
-          max-width: 440px;
-        }
-
-        .hero-actions {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.9rem 2.2rem;
-          background: white;
-          color: #1565c0;
-          font-family: 'Inter', sans-serif;
-          font-size: 0.9rem;
-          font-weight: 700;
-          border-radius: 10px;
-          text-decoration: none;
-          border: none;
-          cursor: pointer;
-          transition: transform 0.15s, box-shadow 0.15s;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(0,0,0,0.25);
-        }
-
-        .btn-primary svg {
-          width: 16px; height: 16px;
-        }
-
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.5rem 1rem;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 20px;
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.8);
-          backdrop-filter: blur(4px);
-        }
-
-        .status-dot {
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: #4ade80;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .hero-right {
-          animation: fadeRight 0.6s ease forwards 0.2s;
-          opacity: 0;
-        }
-
-        @keyframes fadeRight {
-          from { opacity: 0; transform: translateX(24px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-
-        .features-card {
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 20px;
-          padding: 2rem;
-          backdrop-filter: blur(12px);
-        }
-
-        .features-card-title {
-          font-size: 0.7rem;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.55);
-          margin-bottom: 1.4rem;
-          font-weight: 500;
-        }
-
-        .feature-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.9rem;
-        }
-
-        .feature-row {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem 1.2rem;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 12px;
-          transition: background 0.15s;
-        }
-
-        .feature-row:hover {
-          background: rgba(255,255,255,0.14);
-        }
-
-        .feat-icon {
-          width: 42px; height: 42px;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.15);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .feat-icon svg {
-          width: 18px; height: 18px;
-          stroke: white;
-          fill: none;
-          stroke-width: 1.8;
-          stroke-linecap: round;
-          stroke-linejoin: round;
-        }
-
-        .feat-body { flex: 1; }
-
-        .feat-name {
-          font-size: 0.88rem;
-          font-weight: 600;
-          color: white;
-          margin-bottom: 0.15rem;
-        }
-
-        .feat-desc {
-          font-size: 0.72rem;
-          color: rgba(255,255,255,0.55);
-          font-weight: 400;
-        }
-
-        .feat-arrow {
-          color: rgba(255,255,255,0.35);
-          font-size: 1rem;
-        }
-
-        .stats-bar {
-          position: relative;
-          z-index: 20;
-          display: flex;
-          align-items: stretch;
-          border-top: 1px solid rgba(255,255,255,0.12);
-          background: rgba(255,255,255,0.05);
-          backdrop-filter: blur(4px);
-          animation: fadeIn 0.5s ease forwards 0.6s;
-          opacity: 0;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-
-        .stat {
-          flex: 1;
-          padding: 1.2rem 2rem;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.2rem;
-          border-right: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .stat:last-child { border-right: none; }
-
-        .stat-num {
-          font-size: 1.6rem;
-          font-weight: 800;
-          color: white;
-          letter-spacing: -0.02em;
-          line-height: 1;
-        }
-
-        .stat-label {
-          font-size: 0.62rem;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.45);
-          font-weight: 400;
-        }
-
-        @media (max-width: 768px) {
-          nav { padding: 1rem 1.5rem; }
-          .nav-brand-sub { display: none; }
-          .hero {
-            grid-template-columns: 1fr;
-            padding: 2.5rem 1.5rem;
-            gap: 2.5rem;
-          }
-          .stats-bar { flex-wrap: wrap; }
-          .stat { flex: 1 1 50%; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        }
-      `}</style>
-
-      <div className="uarc-root">
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-        <div className="blob blob-3" />
-        <div className="dot-pattern" />
-
-        <nav>
-          <div className="nav-left">
-            <div className="nav-logo-img">
-              <Image
-                src="/UarcLogo.png"
-                alt="LOGO"
-                width={44}
-                height={44}
-                style={{ objectFit: "contain" }}
-              />
+      {/* Nav */}
+      <nav className="bg-slate-900 border-b border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/10 border border-white/15 rounded-lg p-1.5">
+              <Image src="/UarcLogo.png" alt="Logo UARC" width={32} height={32} className="object-contain" />
             </div>
-            <div className="nav-brand">
-              <span className="nav-brand-name">UARC</span>
-              <span className="nav-brand-sub">Unión de Árbitros de Río Cuarto</span>
+            <div>
+              <p className="text-white font-bold text-sm tracking-wide leading-none">UARC</p>
+              <p className="text-slate-400 text-[11px] leading-none mt-1 hidden sm:block">
+                Unión de Árbitros de Río Cuarto
+              </p>
             </div>
           </div>
-          <Link href="/login" className="btn-nav-login">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-              <polyline points="10 17 15 12 10 7"/>
-              <line x1="15" y1="12" x2="3" y2="12"/>
-            </svg>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <LogIn size={15} />
             Iniciar Sesión
           </Link>
-        </nav>
+        </div>
+      </nav>
 
-        <div className="hero">
-          <div className="hero-left">
-            <div className="eyebrow">
-              <div className="eyebrow-dot" />
+      {/* Hero */}
+      <div className="flex-1 bg-gradient-to-b from-slate-900 to-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+
+          {/* Columna izquierda */}
+          <div>
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300 mb-4">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
               Sistema de gestión institucional
             </div>
 
-            <h1 className="hero-title">
-              <span>Gestión Integral</span>
-              UARC
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+              Gestión Integral UARC
             </h1>
 
-            <p className="hero-desc">
+            <p className="text-slate-300 text-base leading-relaxed max-w-md mb-8">
               La plataforma oficial para árbitros asociados a la Unión de Árbitros de Río Cuarto.
-              Gestioná cuotas, Cobranzas y el historial de ingresos e egresos.
+              Gestioná cuotas, cobranzas y el historial de ingresos y egresos.
             </p>
 
-            <div className="hero-actions">
-              <Link href="/login" className="btn-primary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                  <polyline points="10 17 15 12 10 7"/>
-                  <line x1="15" y1="12" x2="3" y2="12"/>
-                </svg>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-900 font-semibold text-sm px-6 py-3 rounded-lg transition-colors shadow-sm"
+              >
                 Acceder al sistema
+                <ArrowRight size={16} />
               </Link>
               {message && (
-                <div className="status-pill">
-                  <div className="status-dot" />
+                <div className="inline-flex items-center gap-2 text-xs text-slate-300 bg-white/5 border border-white/10 rounded-full px-3 py-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   {message}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="hero-right">
-            <div className="features-card">
-              <p className="features-card-title">¿Qué podés gestionar?</p>
-              <div className="feature-list">
-                <div className="feature-row">
-                  <div className="feat-icon">
-                    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                  </div>
-                  <div className="feat-body">
-                    <div className="feat-name">Tesorería</div>
-                    <div className="feat-desc">Cuotas societarias, pagos y estado de cuenta</div>
-                  </div>
-                  <span className="feat-arrow">›</span>
-                </div>
+          {/* Columna derecha — card */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
+              ¿Qué podés gestionar?
+            </p>
+            <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-lg p-4">
+              <div className="bg-white/10 border border-white/10 p-2.5 rounded-lg shrink-0">
+                <Landmark size={18} className="text-white" />
               </div>
+              <div className="min-w-0">
+                <p className="text-white text-sm font-semibold mb-0.5">Tesorería</p>
+                <p className="text-slate-400 text-xs">Cuotas societarias, pagos y estado de cuenta</p>
+              </div>
+              <ArrowRight size={16} className="text-slate-500 shrink-0" />
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="stats-bar">
-          <div className="stat">
-            <span className="stat-num">UARC</span>
-            <span className="stat-label">Afiliada</span>
-          </div>
-          <div className="stat">
-            <span className="stat-num">+50</span>
-            <span className="stat-label">Árbitros activos</span>
-          </div>
-          <div className="stat">
-            <span className="stat-num">Rio cuarto</span>
-            <span className="stat-label">Sede Rio cuarto</span>
-          </div>
-          <div className="stat">
-            <span className="stat-num">2026</span>
-            <span className="stat-label">Temporada</span>
-          </div>
+      {/* Stats bar */}
+      <div className="bg-slate-950 border-t border-slate-800">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-800">
+          <Stat icon={<ShieldCheck size={16} />} value="UARC" label="Afiliada" />
+          <Stat icon={<Users size={16} />} value="+50" label="Árbitros activos" />
+          <Stat icon={<Landmark size={16} />} value="Río Cuarto" label="Sede" />
+          <Stat icon={<Landmark size={16} />} value="2026" label="Temporada" />
         </div>
       </div>
-    </>
+    </div>
+  );
+}
+
+function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 py-6 px-2 text-center">
+      <div className="text-slate-500 mb-0.5">{icon}</div>
+      <span className="text-white font-bold text-base leading-none truncate max-w-full">{value}</span>
+      <span className="text-slate-500 text-[10px] uppercase tracking-wider">{label}</span>
+    </div>
   );
 }
