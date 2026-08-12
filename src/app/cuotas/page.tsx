@@ -6,6 +6,22 @@ import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 import type { Usuario, Cuota } from "@/lib/types";
+import {
+  Receipt,
+  PlusCircle,
+  ListFilter,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Trash2,
+  Edit,
+  CreditCard,
+  FileDown,
+  Mail,
+  Users,
+  Send,
+  Check,
+} from "lucide-react";
 
 interface Form {
   usuarioId: string;
@@ -32,8 +48,8 @@ interface EstadoCobro {
 }
 
 const MESES = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
 function mesAnioActual() {
@@ -383,77 +399,102 @@ export default function CuotasPage() {
   const marcadosParaCobrar = usuarios.filter((u) => estadoCobro[u.id]?.pagando).length;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-100 text-slate-800">
       <Sidebar />
-      <main className="flex-1 p-8 bg-white text-gray-900">
-        <h1 className="text-3xl font-bold mb-6">Cuotas Societarias</h1>
 
-        <div className="flex space-x-2 mb-6 flex-wrap gap-y-2">
-          {(["form", "list", "search", "cobro"] as const).map((tab) => {
-            const labels: Record<string, string> = {
-              form: editingId ? "Editar Cuota" : "Registrar Cuota",
-              list: "Listado",
-              search: "Buscar",
-              cobro: "Cobro Mensual",
-            };
+      <main className="flex-1 min-w-0 w-full pt-16 px-4 pb-8 lg:pt-8 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Cuotas Societarias</h1>
+            <p className="text-sm text-slate-500">Gestión de pagos, cobros masivos y recibos</p>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap gap-2 mb-6 bg-slate-200/70 p-1.5 rounded-xl">
+          {[
+            { id: "form", label: editingId ? "Editar Cuota" : "Registrar Cuota", icon: PlusCircle },
+            { id: "list", label: "Listado General", icon: ListFilter },
+            { id: "search", label: "Buscar Árbitro", icon: Search },
+            { id: "cobro", label: "Cobro Mensual", icon: Receipt },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
               <button
-                key={tab}
+                key={tab.id}
                 onClick={() => {
-                  if (tab === "form") {
+                  if (tab.id === "form" && activeTab !== "form") {
                     setEditingId(null);
                     setForm({ usuarioId: "", fecha: new Date().toISOString().slice(0, 10), monto: "" });
                   }
-                  setActiveTab(tab);
+                  setActiveTab(tab.id as typeof activeTab);
                 }}
-                className={`px-4 py-2 rounded font-medium text-sm ${
-                  activeTab === tab
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                  isActive
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
                 }`}
               >
-                {labels[tab]}
+                <Icon size={16} />
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
+        {/* TAB 1: FORMULARIO REGISTRO/EDICION */}
         {activeTab === "form" && (
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-xl font-bold mb-4">
-              {editingId ? "Editar Cuota" : "Registrar Cuota"}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 lg:p-6 max-w-3xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <PlusCircle className="text-slate-700" size={20} />
+              {editingId ? "Editar Cuota Existente" : "Registrar Nueva Cuota"}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                value={form.usuarioId}
-                onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
-                className="border p-2 rounded"
-              >
-                <option value="">Seleccione Árbitro</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nombre}</option>
-                ))}
-              </select>
-              <input
-                type="date"
-                className="border p-2 rounded"
-                value={form.fecha}
-                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Monto"
-                className="border p-2 rounded"
-                value={form.monto}
-                onChange={(e) => setForm({ ...form, monto: e.target.value })}
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Árbitro</label>
+                <select
+                  value={form.usuarioId}
+                  onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-800"
+                >
+                  <option value="">Seleccione Árbitro</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>{u.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-800"
+                  value={form.fecha}
+                  onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Monto ($)</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-800"
+                  value={form.monto}
+                  onChange={(e) => setForm({ ...form, monto: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="flex space-x-2 mt-4">
+
+            <div className="flex gap-2 mt-6">
               <button
                 onClick={handleSubmit}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                className="bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-5 rounded-lg text-sm transition-colors"
               >
-                {editingId ? "Actualizar" : "Registrar Cuota"}
+                {editingId ? "Actualizar Cuota" : "Guardar Cuota"}
               </button>
               {editingId && (
                 <button
@@ -461,7 +502,7 @@ export default function CuotasPage() {
                     setEditingId(null);
                     setForm({ usuarioId: "", fecha: new Date().toISOString().slice(0, 10), monto: "" });
                   }}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded"
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
                 >
                   Cancelar
                 </button>
@@ -470,68 +511,128 @@ export default function CuotasPage() {
           </div>
         )}
 
+        {/* TAB 2: LISTADO GENERAL */}
         {activeTab === "list" && (
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-xl font-bold mb-4">Listado de Cuotas</h2>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-900 text-base">Listado Completo de Cuotas</h2>
+              <span className="text-xs text-slate-500 font-medium">{cuotas.length} registros</span>
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full text-xs lg:text-sm text-left border-collapse">
                 <thead>
-                  <tr className="bg-green-100">
-                    {["ID","Fecha","Árbitro","Monto","Pagado","Pendiente","Estado","Acciones"].map((h) => (
-                      <th key={h} className="p-2 border text-gray-900">{h}</th>
-                    ))}
+                  <tr className="bg-slate-900 text-white font-medium text-xs">
+                    <th className="px-3 py-3">ID</th>
+                    <th className="px-3 py-3 whitespace-nowrap">Fecha</th>
+                    <th className="px-3 py-3">Árbitro</th>
+                    <th className="px-3 py-3 text-right">Monto</th>
+                    <th className="px-3 py-3 text-right">Pagado</th>
+                    <th className="px-3 py-3 text-right">Pendiente</th>
+                    <th className="px-3 py-3 text-center">Estado</th>
+                    <th className="px-3 py-3 text-center">Acciones</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {cuotas.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-100">
-                      <td className="p-2 border">{c.id}</td>
-                      <td className="p-2 border">{formatDate(c.fecha)}</td>
-                      <td className="p-2 border">{c.usuario?.nombre || "Desconocido"}</td>
-                      <td className="p-2 border">${c.monto.toFixed(2)}</td>
-                      <td className="p-2 border">${(c.monto_pagado || 0).toFixed(2)}</td>
-                      <td className="p-2 border">${(c.monto - (c.monto_pagado || 0)).toFixed(2)}</td>
-                      <td className="p-2 border">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${c.pagado ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}>
-                          {c.pagado ? "Pagada" : "Pendiente"}
-                        </span>
-                      </td>
-                      <td className="p-2 border">
-                        <div className="flex space-x-1 justify-center">
-                          <button onClick={() => handleEdit(c)} className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs py-1 px-2 rounded">Editar</button>
-                          <button onClick={() => handleDelete(c.id)} className="bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded">Eliminar</button>
-                          {!c.pagado && (
-                            <button onClick={() => handleMarcarPagada(c.id)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded">Pagar</button>
-                          )}
-                          {c.pagado && (
-                            <button onClick={() => handleGenerateRecibo(c.id)} className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-2 rounded">PDF</button>
-                          )}
-                        </div>
+                <tbody className="divide-y divide-slate-200">
+                  {cuotas.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-400">
+                        No hay cuotas registradas.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    cuotas.map((c, idx) => {
+                      const pendiente = c.monto - (c.monto_pagado || 0);
+                      return (
+                        <tr
+                          key={c.id}
+                          className={idx % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-100/80"}
+                        >
+                          <td className="px-3 py-2.5 font-mono text-slate-400">#{c.id}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">{formatDate(c.fecha)}</td>
+                          <td className="px-3 py-2.5 font-medium text-slate-800">{c.usuario?.nombre || "Desconocido"}</td>
+                          <td className="px-3 py-2.5 text-right font-medium">${c.monto.toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right text-emerald-600 font-medium">${(c.monto_pagado || 0).toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right text-rose-600 font-medium">${pendiente.toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                c.pagado
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {c.pagado ? "Pagada" : "Pendiente"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleEdit(c)}
+                                title="Editar"
+                                className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded"
+                              >
+                                <Edit size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(c.id)}
+                                title="Eliminar"
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                              {!c.pagado && (
+                                <button
+                                  onClick={() => handleMarcarPagada(c.id)}
+                                  title="Pagar totalmente"
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded"
+                                >
+                                  <CreditCard size={15} />
+                                </button>
+                              )}
+                              {c.pagado && (
+                                <button
+                                  onClick={() => handleGenerateRecibo(c.id)}
+                                  title="Descargar PDF"
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                >
+                                  <FileDown size={15} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-4 text-right font-bold text-sm">
-              <div>Total Cuotas: ${totalCuotas.toFixed(2)}</div>
-              <div className="text-green-600">Total Pagado: ${totalPagado.toFixed(2)}</div>
-              <div className="text-red-600">Total Pendiente: ${totalPendiente.toFixed(2)}</div>
+
+            {/* Totales Resumen Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-right font-bold text-xs sm:text-sm">
+              <div className="text-slate-700">Total Cuotas: ${totalCuotas.toFixed(2)}</div>
+              <div className="text-emerald-600">Total Pagado: ${totalPagado.toFixed(2)}</div>
+              <div className="text-rose-600">Total Pendiente: ${totalPendiente.toFixed(2)}</div>
             </div>
           </div>
         )}
 
+        {/* TAB 3: BUSCAR CUOTAS */}
         {activeTab === "search" && (
           <div className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">Buscar Cuotas por Árbitro</h2>
-              <div className="flex space-x-4 items-end flex-wrap gap-y-3">
-                <div className="flex-1 min-w-[180px]">
-                  <label className="block mb-2 font-semibold text-sm">Árbitro:</label>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 lg:p-6">
+              <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Search size={18} /> Buscar Cuotas por Árbitro y Rango
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Árbitro</label>
                   <select
                     value={searchForm.usuarioId}
                     onChange={(e) => setSearchForm({ ...searchForm, usuarioId: e.target.value })}
-                    className="border p-2 rounded w-full"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"
                   >
                     <option value="">Seleccione un árbitro</option>
                     {usuarios.map((u) => (
@@ -539,82 +640,150 @@ export default function CuotasPage() {
                     ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block mb-2 font-semibold text-sm">Desde:</label>
-                  <input type="date" value={searchForm.desde} onChange={(e) => setSearchForm({ ...searchForm, desde: e.target.value })} className="border p-2 rounded" />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Desde</label>
+                  <input
+                    type="date"
+                    value={searchForm.desde}
+                    onChange={(e) => setSearchForm({ ...searchForm, desde: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"
+                  />
                 </div>
+
                 <div>
-                  <label className="block mb-2 font-semibold text-sm">Hasta:</label>
-                  <input type="date" value={searchForm.hasta} onChange={(e) => setSearchForm({ ...searchForm, hasta: e.target.value })} className="border p-2 rounded" />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Hasta</label>
+                  <input
+                    type="date"
+                    value={searchForm.hasta}
+                    onChange={(e) => setSearchForm({ ...searchForm, hasta: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"
+                  />
                 </div>
-                <button onClick={handleSearchByUser} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                  Buscar
+
+                <button
+                  onClick={handleSearchByUser}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Search size={16} /> Buscar
                 </button>
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">Resultados</h2>
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-green-100">
-                    {["ID","Fecha","Árbitro","Monto","Pagado","Pendiente","Estado"].map((h) => (
-                      <th key={h} className="p-2 border text-gray-900">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {cuotasFiltradas.map((c) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => setSelectedCuota(c)}
-                      className={`cursor-pointer hover:bg-gray-100 ${selectedCuota?.id === c.id ? "bg-green-50" : ""}`}
-                    >
-                      <td className="p-2 border">{c.id}</td>
-                      <td className="p-2 border">{formatDate(c.fecha)}</td>
-                      <td className="p-2 border">{c.usuario?.nombre || "Desconocido"}</td>
-                      <td className="p-2 border">${c.monto.toFixed(2)}</td>
-                      <td className="p-2 border">${(c.monto_pagado || 0).toFixed(2)}</td>
-                      <td className="p-2 border">${(c.monto - (c.monto_pagado || 0)).toFixed(2)}</td>
-                      <td className="p-2 border">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${c.pagado ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}>
-                          {c.pagado ? "Pagada" : "Pendiente"}
-                        </span>
-                      </td>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
+              <h2 className="text-sm font-bold text-slate-900 mb-3">Resultados de la búsqueda</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs lg:text-sm text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-medium text-xs">
+                      <th className="px-3 py-3">ID</th>
+                      <th className="px-3 py-3">Fecha</th>
+                      <th className="px-3 py-3">Árbitro</th>
+                      <th className="px-3 py-3 text-right">Monto</th>
+                      <th className="px-3 py-3 text-right">Pagado</th>
+                      <th className="px-3 py-3 text-right">Pendiente</th>
+                      <th className="px-3 py-3 text-center">Estado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {cuotasFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-slate-400">
+                          No hay resultados para la búsqueda realizada.
+                        </td>
+                      </tr>
+                    ) : (
+                      cuotasFiltradas.map((c) => (
+                        <tr
+                          key={c.id}
+                          onClick={() => setSelectedCuota(c)}
+                          className={`cursor-pointer transition-colors ${
+                            selectedCuota?.id === c.id ? "bg-slate-100" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <td className="px-3 py-2.5 font-mono text-slate-400">#{c.id}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(c.fecha)}</td>
+                          <td className="px-3 py-2.5 font-medium">{c.usuario?.nombre || "Desconocido"}</td>
+                          <td className="px-3 py-2.5 text-right">${c.monto.toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right text-emerald-600">${(c.monto_pagado || 0).toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right text-rose-600">
+                            ${(c.monto - (c.monto_pagado || 0)).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                c.pagado ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {c.pagado ? "Pagada" : "Pendiente"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               {selectedCuota && (
-                <div className="mt-4">
+                <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <h3 className="font-bold text-slate-900 text-xs uppercase mb-3">
+                    Acciones para la cuota #{selectedCuota.id} ({selectedCuota.usuario?.nombre})
+                  </h3>
+
                   {!selectedCuota.pagado && (
-                    <div className="mb-4 p-4 bg-blue-50 rounded">
-                      <h3 className="font-bold mb-2 text-sm">Registrar Pago Parcial</h3>
-                      <div className="flex space-x-2">
-                        <input
-                          type="number"
-                          placeholder="Monto a pagar"
-                          value={pagoForm.montoPagado}
-                          onChange={(e) => setPagoForm({ ...pagoForm, montoPagado: e.target.value })}
-                          className="border p-2 rounded flex-1"
-                        />
-                        <button onClick={() => handlePagarCuota(selectedCuota.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                          Registrar Pago
-                        </button>
-                      </div>
+                    <div className="mb-4 flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="number"
+                        placeholder="Monto parcial a pagar"
+                        value={pagoForm.montoPagado}
+                        onChange={(e) => setPagoForm({ ...pagoForm, montoPagado: e.target.value })}
+                        className="border border-slate-300 rounded-lg p-2 text-sm bg-white flex-1"
+                      />
+                      <button
+                        onClick={() => handlePagarCuota(selectedCuota.id)}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+                      >
+                        Registrar Pago
+                      </button>
                     </div>
                   )}
-                  <div className="flex space-x-2 flex-wrap gap-y-2">
-                    <button onClick={() => handleEdit(selectedCuota)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm">Editar</button>
-                    <button onClick={() => handleDelete(selectedCuota.id)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm">Eliminar</button>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleEdit(selectedCuota)}
+                      className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(selectedCuota.id)}
+                      className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                    >
+                      Eliminar
+                    </button>
                     {!selectedCuota.pagado && (
-                      <button onClick={() => handleMarcarPagada(selectedCuota.id)} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm">Marcar como Pagada</button>
+                      <button
+                        onClick={() => handleMarcarPagada(selectedCuota.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                      >
+                        Marcar Completa
+                      </button>
                     )}
                     {selectedCuota.pagado && (
                       <>
-                        <button onClick={() => handleGenerateRecibo(selectedCuota.id)} className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded text-sm">Descargar Recibo</button>
-                        <button onClick={() => handleSendEmail(selectedCuota)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm">Enviar Email</button>
+                        <button
+                          onClick={() => handleGenerateRecibo(selectedCuota.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1"
+                        >
+                          <FileDown size={14} /> Descargar PDF
+                        </button>
+                        <button
+                          onClick={() => handleSendEmail(selectedCuota)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1"
+                        >
+                          <Mail size={14} /> Enviar Email
+                        </button>
                       </>
                     )}
                   </div>
@@ -624,21 +793,23 @@ export default function CuotasPage() {
           </div>
         )}
 
+        {/* TAB 4: COBRO MENSUAL */}
         {activeTab === "cobro" && (
           <div className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">Cobro Mensual</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                Seleccioná el mes, el monto y marcá quién pagó. Al guardar se crean y registran los pagos automáticamente.
+            {/* Controles del cobro */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 lg:p-6">
+              <h2 className="text-base font-bold text-slate-900 mb-1">Cobro Mensual Masivo</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                Seleccioná mes, monto e indicá qué árbitros cancelaron su cuota.
               </p>
 
               <div className="flex flex-wrap gap-4 items-end">
                 <div>
-                  <label className="block mb-1 text-sm font-semibold">Mes:</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Mes</label>
                   <select
                     value={mesCobro}
                     onChange={(e) => setMesCobro(Number(e.target.value))}
-                    className="border p-2 rounded"
+                    className="border border-slate-300 rounded-lg p-2 text-sm bg-white"
                   >
                     {MESES.map((m, i) => (
                       <option key={i} value={i}>{m}</option>
@@ -647,11 +818,11 @@ export default function CuotasPage() {
                 </div>
 
                 <div>
-                  <label className="block mb-1 text-sm font-semibold">Año:</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Año</label>
                   <select
                     value={anioCobro}
                     onChange={(e) => setAnioCobro(Number(e.target.value))}
-                    className="border p-2 rounded"
+                    className="border border-slate-300 rounded-lg p-2 text-sm bg-white"
                   >
                     {[anioHoy - 1, anioHoy, anioHoy + 1].map((a) => (
                       <option key={a} value={a}>{a}</option>
@@ -660,127 +831,161 @@ export default function CuotasPage() {
                 </div>
 
                 <div>
-                  <label className="block mb-1 text-sm font-semibold">Monto para todos ($):</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Monto general ($)</label>
                   <input
                     type="number"
                     value={montoGlobal}
                     onChange={(e) => aplicarMontoGlobal(e.target.value)}
-                    className="border p-2 rounded w-32"
+                    className="border border-slate-300 rounded-lg p-2 text-sm bg-white w-28 text-center"
                   />
                 </div>
 
-                <button
-                  onClick={marcarTodos}
-                  className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded text-sm border border-blue-300"
-                >
-                  Marcar todos
-                </button>
-                <button
-                  onClick={handleGuardarCobro}
-                  disabled={guardando || marcadosParaCobrar === 0}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded text-sm"
-                >
-                  {guardando ? "Guardando..." : `Guardar (${marcadosParaCobrar})`}
-                </button>
-                <button
-                  onClick={handleReenviarEmails}
-                  disabled={reenviando || pagadosEsteMes === 0}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded text-sm"
-                >
-                  {reenviando ? "Enviando..." : `Reenviar emails (${pagadosEsteMes})`}
-                </button>
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={marcarTodos}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-2 px-3 rounded-lg text-xs sm:text-sm"
+                  >
+                    Marcar todos
+                  </button>
+                  <button
+                    onClick={handleGuardarCobro}
+                    disabled={guardando || marcadosParaCobrar === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5"
+                  >
+                    <Check size={16} />
+                    {guardando ? "Guardando..." : `Guardar Cobros (${marcadosParaCobrar})`}
+                  </button>
+                  <button
+                    onClick={handleReenviarEmails}
+                    disabled={reenviando || pagadosEsteMes === 0}
+                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-xs sm:text-sm inline-flex items-center gap-1.5"
+                  >
+                    <Send size={14} />
+                    {reenviando ? "Enviando..." : `Reenviar recibos (${pagadosEsteMes})`}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded shadow p-4 text-center">
-                <p className="text-sm text-gray-500 mb-1">Total árbitros</p>
-                <p className="text-2xl font-bold text-gray-900">{usuarios.length}</p>
+            {/* Resumen Tarjetas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Total Árbitros</p>
+                  <p className="text-xl font-bold text-slate-900">{usuarios.length}</p>
+                </div>
+                <div className="p-2.5 bg-slate-100 rounded-lg text-slate-700">
+                  <Users size={20} />
+                </div>
               </div>
-              <div className="bg-green-50 rounded shadow p-4 text-center">
-                <p className="text-sm text-gray-500 mb-1">Pagaron este mes</p>
-                <p className="text-2xl font-bold text-green-700">{pagadosEsteMes}</p>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Pagaron este mes</p>
+                  <p className="text-xl font-bold text-emerald-600">{pagadosEsteMes}</p>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-lg text-emerald-600">
+                  <CheckCircle2 size={20} />
+                </div>
               </div>
-              <div className="bg-red-50 rounded shadow p-4 text-center">
-                <p className="text-sm text-gray-500 mb-1">Pendientes</p>
-                <p className="text-2xl font-bold text-red-600">{pendientesEsteMes}</p>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Pendientes</p>
+                  <p className="text-xl font-bold text-rose-600">{pendientesEsteMes}</p>
+                </div>
+                <div className="p-2.5 bg-rose-50 rounded-lg text-rose-600">
+                  <AlertCircle size={20} />
+                </div>
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded shadow overflow-x-auto">
-              <h3 className="font-bold mb-3 text-gray-700">
-                {MESES[mesCobro]} {anioCobro}
-              </h3>
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-green-100">
-                    <th className="p-3 border text-left text-gray-900">Árbitro</th>
-                    <th className="p-3 border text-center text-gray-900">Estado del mes</th>
-                    <th className="p-3 border text-center text-gray-900">Monto ($)</th>
-                    <th className="p-3 border text-center text-gray-900">Cobrar ahora</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usuarios.map((u, idx) => {
-                    const cuota = cuotaDelMes(u.id);
-                    const yaPagado = cuota?.pagado ?? false;
-                    const marcado = estadoCobro[u.id]?.pagando ?? false;
-                    const monto = estadoCobro[u.id]?.monto ?? montoGlobal;
+            {/* Tabla del mes */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {MESES[mesCobro]} {anioCobro}
+                </h3>
+              </div>
 
-                    return (
-                      <tr
-                        key={u.id}
-                        className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-green-50 transition-colors`}
-                      >
-                        <td className="p-3 border font-medium text-gray-900">{u.nombre}</td>
-                        <td className="p-3 border text-center">
-                          {yaPagado ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">Pagado</span>
-                          ) : cuota ? (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">Cuota sin pagar</span>
-                          ) : (
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">Sin cuota</span>
-                          )}
-                        </td>
-                        <td className="p-3 border text-center">
-                          {yaPagado ? (
-                            <span className="text-green-700 font-semibold">
-                              ${(cuota?.monto_pagado ?? cuota?.monto ?? 0).toFixed(2)}
-                            </span>
-                          ) : (
-                            <input
-                              type="number"
-                              value={monto}
-                              onChange={(e) => setMontoCobro(u.id, e.target.value)}
-                              className="border p-1 rounded w-24 text-center text-sm"
-                              disabled={yaPagado}
-                            />
-                          )}
-                        </td>
-                        <td className="p-3 border text-center">
-                          {yaPagado ? (
-                            <span className="text-gray-400 text-xs">—</span>
-                          ) : (
-                            <button
-                              onClick={() => togglePagando(u.id)}
-                              className={`py-1 px-4 rounded text-xs font-bold border transition-colors ${
-                                marcado
-                                  ? "bg-green-600 text-white border-green-600 hover:bg-green-700"
-                                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                              }`}
-                            >
-                              {marcado ? "✓ Marcado" : "Marcar"}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs lg:text-sm text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-medium text-xs">
+                      <th className="px-4 py-3">Árbitro</th>
+                      <th className="px-4 py-3 text-center">Estado del mes</th>
+                      <th className="px-4 py-3 text-center">Monto ($)</th>
+                      <th className="px-4 py-3 text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {usuarios.map((u, idx) => {
+                      const cuota = cuotaDelMes(u.id);
+                      const yaPagado = cuota?.pagado ?? false;
+                      const marcado = estadoCobro[u.id]?.pagando ?? false;
+                      const monto = estadoCobro[u.id]?.monto ?? montoGlobal;
+
+                      return (
+                        <tr
+                          key={u.id}
+                          className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
+                        >
+                          <td className="px-4 py-3 font-medium text-slate-800">{u.nombre}</td>
+                          <td className="px-4 py-3 text-center">
+                            {yaPagado ? (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                                Pagado
+                              </span>
+                            ) : cuota ? (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
+                                Sin pagar
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
+                                Sin cuota
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {yaPagado ? (
+                              <span className="text-emerald-700 font-semibold font-mono">
+                                ${(cuota?.monto_pagado ?? cuota?.monto ?? 0).toFixed(2)}
+                              </span>
+                            ) : (
+                              <input
+                                type="number"
+                                value={monto}
+                                onChange={(e) => setMontoCobro(u.id, e.target.value)}
+                                className="border border-slate-300 rounded px-2 py-1 w-24 text-center text-xs"
+                                disabled={yaPagado}
+                              />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {yaPagado ? (
+                              <span className="text-slate-400 text-xs">—</span>
+                            ) : (
+                              <button
+                                onClick={() => togglePagando(u.id)}
+                                className={`py-1 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                                  marcado
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                }`}
+                              >
+                                {marcado ? "✓ Marcado" : "Marcar"}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {usuarios.length === 0 && (
-                <p className="text-center text-gray-400 py-8 text-sm">No hay árbitros registrados.</p>
+                <p className="text-center text-slate-400 py-6 text-xs">No hay árbitros registrados.</p>
               )}
             </div>
           </div>
