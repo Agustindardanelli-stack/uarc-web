@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {
+  Mail,
+  ArrowLeft,
+  CheckCircle2,
+  Info,
+  Send,
+  Loader2,
+} from "lucide-react";
 
 interface EmailConfig {
   id?: number;
@@ -172,46 +180,59 @@ export default function EmailConfigPage() {
     }
   };
 
-  const alertColors: Record<string, string> = {
-    success: "bg-green-50 border-green-400 text-green-800",
-    error: "bg-red-50 border-red-400 text-red-800",
-    warning: "bg-yellow-50 border-yellow-400 text-yellow-800",
+  const alertStyles: Record<string, string> = {
+    success: "bg-emerald-50 border-emerald-400 text-emerald-800",
+    error: "bg-rose-50 border-rose-400 text-rose-800",
+    warning: "bg-amber-50 border-amber-400 text-amber-800",
     info: "bg-blue-50 border-blue-400 text-blue-800",
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-100 text-slate-800 p-4 lg:p-8">
       <div className="max-w-2xl mx-auto">
 
         {alert && (
-          <div className={`mb-4 border-l-4 rounded p-4 text-sm whitespace-pre-line ${alertColors[alert.type]}`}>
+          <div className={`mb-4 border-l-4 rounded-lg p-4 text-sm whitespace-pre-line ${alertStyles[alert.type]}`}>
             {alert.message}
           </div>
         )}
 
         <button
           onClick={() => window.history.back()}
-          className="mb-6 text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
         >
-          ← Volver al Dashboard
+          <ArrowLeft size={16} />
+          Volver al Dashboard
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Configuración de Email para Recibos</h1>
-        <p className="text-gray-500 text-sm mb-6">El sistema utiliza Brevo para el envío automático de recibos por email.</p>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="bg-slate-900 text-white p-2 rounded-lg">
+            <Mail size={20} />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Configuración de Email para Recibos</h1>
+        </div>
+        <p className="text-slate-500 text-sm mb-6 ml-[52px]">
+          El sistema utiliza Brevo para el envío automático de recibos por email.
+        </p>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-          <h2 className="font-semibold text-gray-700 mb-3">Estado del Sistema</h2>
-          <p className="text-green-600 font-medium text-sm mb-2">✅ Brevo API configurada en el servidor</p>
-          <p className="text-gray-400 text-sm">
+        {/* Estado del sistema */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Estado del Sistema</h2>
+          <p className="flex items-center gap-2 text-emerald-600 font-semibold text-sm mb-2">
+            <CheckCircle2 size={16} />
+            Brevo API configurada en el servidor
+          </p>
+          <p className="text-slate-400 text-sm">
             La configuración de Brevo se gestiona mediante variables de entorno en el servidor. No es necesario configurar SMTP manualmente.
           </p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-          <h2 className="font-semibold text-gray-700 mb-4">Configuración de Email</h2>
+        {/* Configuración */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">Configuración de Email</h2>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Email Remitente (verificado en Brevo)
             </label>
             <input
@@ -219,7 +240,7 @@ export default function EmailConfigPage() {
               value={emailFrom}
               onChange={(e) => setEmailFrom(e.target.value)}
               placeholder="unidadarbitrosriocuarto@gmail.com"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
             />
           </div>
 
@@ -228,58 +249,65 @@ export default function EmailConfigPage() {
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="w-4 h-4 accent-blue-600"
+              className="w-4 h-4 accent-slate-900 rounded"
             />
-            <span className="text-sm text-gray-700">Sistema de Email Activo</span>
+            <span className="text-sm text-slate-700">Sistema de Email Activo</span>
           </label>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
-          <strong>ℹ️ Nota importante:</strong> El email remitente debe estar verificado en Brevo. Los cambios en la API Key de Brevo se realizan directamente en las variables de entorno del servidor (Render).
+        {/* Nota informativa */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex gap-3">
+          <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800">
+            <strong>Nota importante:</strong> El email remitente debe estar verificado en Brevo. Los cambios en la API Key de Brevo se realizan directamente en las variables de entorno del servidor (Render).
+          </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
           >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             {loading ? "Guardando..." : "Guardar Configuración"}
           </button>
           <button
             onClick={() => setShowTestModal(true)}
             disabled={testLoading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
           >
+            {testLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             {testLoading ? "Enviando..." : "Probar Envío de Email"}
           </button>
         </div>
       </div>
 
       {showTestModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="font-semibold text-gray-800 mb-3">Probar Email</h3>
-            <p className="text-sm text-gray-500 mb-3">Ingresá el email donde querés recibir el correo de prueba:</p>
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 w-full max-w-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Probar Email</h3>
+            <p className="text-sm text-slate-500 mb-3">Ingresá el email donde querés recibir el correo de prueba:</p>
             <input
               type="email"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
               placeholder="tu@email.com"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
               onKeyDown={(e) => e.key === "Enter" && handleTest()}
             />
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => { setShowTestModal(false); setTestEmail(""); }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleTest}
-                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
               >
+                <Send size={14} />
                 Enviar
               </button>
             </div>
