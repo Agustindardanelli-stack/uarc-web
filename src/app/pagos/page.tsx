@@ -6,6 +6,18 @@ import { apiGet, apiPost, apiPut, apiDelete, apiGetBlob, ApiError } from "@/lib/
 import { formatDate, downloadBlob } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
 import type { Usuario, Pago } from "@/lib/types";
+import {
+  FileText,
+  List,
+  Search,
+  Save,
+  X,
+  Pencil,
+  Trash2,
+  Download,
+  Mail,
+  Receipt,
+} from "lucide-react";
 
 interface Form {
   usuarioId: string;
@@ -63,6 +75,17 @@ export default function PagosPage() {
     }
   }, [fetchData]);
 
+  const resetForm = () => {
+    setForm({
+      usuarioId: "",
+      fecha: new Date().toISOString().slice(0, 10),
+      monto: "",
+      descripcion: "",
+      numeroFactura: "",
+      razonSocial: "",
+    });
+  };
+
   const handleSubmit = async () => {
     if (!token) return;
     if (!form.usuarioId) return toast("Por favor seleccione un árbitro", "error");
@@ -90,14 +113,7 @@ export default function PagosPage() {
       } else {
         await apiPost("/pagos", token, payload);
       }
-      setForm({
-        usuarioId: "",
-        fecha: new Date().toISOString().slice(0, 10),
-        monto: "",
-        descripcion: "",
-        numeroFactura: "",
-        razonSocial: "",
-      });
+      resetForm();
       setEditingId(null);
       setTipoDocumento("orden_pago");
       fetchData(token);
@@ -179,141 +195,158 @@ export default function PagosPage() {
 
   const totalPagos = pagos.reduce((sum, p) => sum + p.monto, 0);
 
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8 bg-white text-gray-900">
-        <h1 className="text-3xl font-bold mb-6">Gestión de Pagos</h1>
+  const tabs: { id: "form" | "list" | "search"; label: string; icon: typeof FileText }[] = [
+    { id: "form", label: editingId ? "Editar Pago" : "Registrar Pago", icon: FileText },
+    { id: "list", label: "Listado de Pagos", icon: List },
+    { id: "search", label: "Buscar Pagos", icon: Search },
+  ];
 
-        <div className="flex space-x-4 mb-6">
-          <button
-            onClick={() => {
-              setActiveTab("form");
-              setEditingId(null);
-              setTipoDocumento("orden_pago");
-              setForm({
-                usuarioId: "",
-                fecha: new Date().toISOString().slice(0, 10),
-                monto: "",
-                descripcion: "",
-                numeroFactura: "",
-                razonSocial: "",
-              });
-            }}
-            className={`px-4 py-2 rounded ${
-              activeTab === "form" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
-            }`}
-          >
-            {editingId ? "Editar Pago" : "Registrar Pago"}
-          </button>
-          <button
-            onClick={() => setActiveTab("list")}
-            className={`px-4 py-2 rounded ${
-              activeTab === "list" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
-            }`}
-          >
-            Listado de Pagos
-          </button>
-          <button
-            onClick={() => setActiveTab("search")}
-            className={`px-4 py-2 rounded ${
-              activeTab === "search" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
-            }`}
-          >
-            Buscar Pagos
-          </button>
+  return (
+    <div className="flex min-h-screen bg-slate-100 text-slate-800">
+      <Sidebar />
+
+      <main className="flex-1 min-w-0 w-full pt-16 px-4 pb-8 lg:pt-8 lg:px-8">
+
+        {/* Encabezado */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Gestión de Pagos</h1>
+          <p className="text-sm text-slate-500">Órdenes de pago y facturas a árbitros</p>
         </div>
 
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-6 bg-white border border-slate-200 rounded-lg p-1 shadow-sm w-full sm:w-fit">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => {
+                setActiveTab(id);
+                if (id === "form" && !editingId) {
+                  setTipoDocumento("orden_pago");
+                  resetForm();
+                }
+              }}
+              className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === id
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab Formulario ── */}
         {activeTab === "form" && (
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-xl font-bold mb-4">
+          <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">
               {editingId ? "Editar Pago" : "Registrar Pago"}
             </h2>
 
-            <div className="mb-4">
-              <label className="font-semibold block mb-2">Tipo de Documento:</label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
+            <div className="mb-5">
+              <label className="text-xs font-medium text-slate-600 block mb-2">Tipo de Documento</label>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     checked={tipoDocumento === "orden_pago"}
                     onChange={() => setTipoDocumento("orden_pago")}
-                    className="mr-2"
+                    className="accent-slate-900 w-4 h-4"
                   />
                   Orden de Pago
                 </label>
-                <label className="flex items-center">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     checked={tipoDocumento === "factura"}
                     onChange={() => setTipoDocumento("factura")}
-                    className="mr-2"
+                    className="accent-slate-900 w-4 h-4"
                   />
                   Factura/Recibo
                 </label>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <select
-                value={form.usuarioId}
-                onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
-                className="border p-2 rounded"
-              >
-                <option value="">Seleccione Árbitro</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nombre}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Árbitro</label>
+                <select
+                  value={form.usuarioId}
+                  onChange={(e) => setForm({ ...form, usuarioId: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                >
+                  <option value="">Seleccione Árbitro</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>{u.nombre}</option>
+                  ))}
+                </select>
+              </div>
 
-              <input
-                type="date"
-                className="border p-2 rounded"
-                value={form.fecha}
-                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-              />
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  value={form.fecha}
+                  onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                />
+              </div>
 
               {tipoDocumento === "factura" && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Número de Factura"
-                    className="border p-2 rounded"
-                    value={form.numeroFactura}
-                    onChange={(e) => setForm({ ...form, numeroFactura: e.target.value })}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Razón Social"
-                    className="border p-2 rounded"
-                    value={form.razonSocial}
-                    onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
-                  />
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Número de Factura</label>
+                    <input
+                      type="text"
+                      placeholder="Número de Factura"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                      value={form.numeroFactura}
+                      onChange={(e) => setForm({ ...form, numeroFactura: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Razón Social</label>
+                    <input
+                      type="text"
+                      placeholder="Razón Social"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                      value={form.razonSocial}
+                      onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
+                    />
+                  </div>
                 </>
               )}
 
-              <input
-                type="number"
-                placeholder="Monto"
-                className="border p-2 rounded"
-                value={form.monto}
-                onChange={(e) => setForm({ ...form, monto: e.target.value })}
-              />
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Monto</label>
+                <input
+                  type="number"
+                  placeholder="Monto"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  value={form.monto}
+                  onChange={(e) => setForm({ ...form, monto: e.target.value })}
+                />
+              </div>
 
-              <input
-                type="text"
-                placeholder="Descripción"
-                className="border p-2 rounded"
-                value={form.descripcion}
-                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              />
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Descripción</label>
+                <input
+                  type="text"
+                  placeholder="Descripción"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className="flex space-x-2 mt-4">
+            <div className="flex flex-col sm:flex-row gap-2 mt-5">
               <button
                 onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-5 rounded-lg text-sm transition-colors"
               >
+                <Save size={15} />
                 {editingId
                   ? "Actualizar"
                   : `Registrar ${tipoDocumento === "factura" ? "Factura" : "Pago"}`}
@@ -323,17 +356,11 @@ export default function PagosPage() {
                   onClick={() => {
                     setEditingId(null);
                     setTipoDocumento("orden_pago");
-                    setForm({
-                      usuarioId: "",
-                      fecha: new Date().toISOString().slice(0, 10),
-                      monto: "",
-                      descripcion: "",
-                      numeroFactura: "",
-                      razonSocial: "",
-                    });
+                    resetForm();
                   }}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded"
+                  className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-5 rounded-lg text-sm transition-colors"
                 >
+                  <X size={15} />
                   Cancelar
                 </button>
               )}
@@ -341,75 +368,110 @@ export default function PagosPage() {
           </div>
         )}
 
+        {/* ── Tab Listado ── */}
         {activeTab === "list" && (
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-xl font-bold mb-4">Listado de Pagos</h2>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-blue-100">
-                  <th className="p-2 border text-gray-900">ID</th>
-                  <th className="p-2 border text-gray-900">Fecha</th>
-                  <th className="p-2 border text-gray-900">Tipo</th>
-                  <th className="p-2 border text-gray-900">Árbitro</th>
-                  <th className="p-2 border text-gray-900">Monto</th>
-                  <th className="p-2 border text-gray-900">Descripción</th>
-                  <th className="p-2 border text-gray-900">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagos.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-100">
-                    <td className="p-2 border">{p.id}</td>
-                    <td className="p-2 border">{formatDate(p.fecha)}</td>
-                    <td className="p-2 border">
-                      {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
-                    </td>
-                    <td className="p-2 border">{p.usuario?.nombre || "Desconocido"}</td>
-                    <td className="p-2 border">${p.monto.toFixed(2)}</td>
-                    <td className="p-2 border">{p.descripcion}</td>
-                    <td className="p-2 border">
-                      <div className="flex space-x-2 justify-center">
-                        <button
-                          onClick={() => handleEdit(p)}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-sm"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
-                        >
-                          Eliminar
-                        </button>
-                        <button
-                          onClick={() => handleGeneratePDF(p.id)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm"
-                        >
-                          PDF
-                        </button>
-                      </div>
-                    </td>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 sm:px-5 py-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <h2 className="font-semibold text-slate-900 text-base">Listado de Pagos</h2>
+              <span className="text-xs text-slate-500 font-medium">{pagos.length} registros</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs lg:text-sm text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white text-xs">
+                    <th className="px-3 py-3 font-semibold">ID</th>
+                    <th className="px-3 py-3 font-semibold whitespace-nowrap">Fecha</th>
+                    <th className="px-3 py-3 font-semibold whitespace-nowrap">Tipo</th>
+                    <th className="px-3 py-3 font-semibold min-w-[120px]">Árbitro</th>
+                    <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Monto</th>
+                    <th className="px-3 py-3 font-semibold min-w-[140px]">Descripción</th>
+                    <th className="px-3 py-3 font-semibold text-center whitespace-nowrap">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="mt-4 text-right font-bold">
-              Total de pagos: ${totalPagos.toFixed(2)}
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {pagos.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-slate-400">
+                        No hay pagos registrados.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagos.map((p, idx) => (
+                      <tr
+                        key={p.id}
+                        className={
+                          idx % 2 === 0
+                            ? "bg-white hover:bg-slate-50"
+                            : "bg-slate-50/50 hover:bg-slate-100/80"
+                        }
+                      >
+                        <td className="px-3 py-2.5 text-slate-400 font-mono text-xs">#{p.id}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">{formatDate(p.fecha)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">
+                          {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-800 font-medium">{p.usuario?.nombre || "Desconocido"}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-900 whitespace-nowrap">
+                          ${p.monto.toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{p.descripcion}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex gap-1.5 justify-center">
+                            <button
+                              onClick={() => handleEdit(p)}
+                              title="Editar"
+                              className="p-1.5 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(p.id)}
+                              title="Eliminar"
+                              className="p-1.5 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleGeneratePDF(p.id)}
+                              title="PDF"
+                              className="p-1.5 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="p-3 text-center text-xs text-slate-400 lg:hidden border-t border-slate-100">
+              Deslizá horizontalmente para ver todas las columnas.
+            </p>
+
+            <div className="px-4 sm:px-5 py-4 border-t border-slate-200 bg-slate-50/50 text-right">
+              <span className="text-sm font-bold text-slate-900">
+                Total de pagos: ${totalPagos.toFixed(2)}
+              </span>
             </div>
           </div>
         )}
 
+        {/* ── Tab Buscar ── */}
         {activeTab === "search" && (
           <div className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">Buscar Pagos por Árbitro</h2>
-              <div className="flex space-x-4 items-end">
-                <div className="flex-1">
-                  <label className="block mb-2 font-semibold">Árbitro:</label>
+            <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Buscar Pagos por Árbitro</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:items-end">
+                <div className="lg:col-span-1">
+                  <label className="block mb-1 text-xs font-medium text-slate-600">Árbitro</label>
                   <select
                     value={searchForm.usuarioId}
                     onChange={(e) => setSearchForm({ ...searchForm, usuarioId: e.target.value })}
-                    className="border p-2 rounded w-full"
+                    className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   >
                     <option value="">Seleccione un árbitro</option>
                     {usuarios.map((u) => (
@@ -418,91 +480,115 @@ export default function PagosPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-2 font-semibold">Desde:</label>
+                  <label className="block mb-1 text-xs font-medium text-slate-600">Desde</label>
                   <input
                     type="date"
                     value={searchForm.desde}
                     onChange={(e) => setSearchForm({ ...searchForm, desde: e.target.value })}
-                    className="border p-2 rounded"
+                    className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-semibold">Hasta:</label>
+                  <label className="block mb-1 text-xs font-medium text-slate-600">Hasta</label>
                   <input
                     type="date"
                     value={searchForm.hasta}
                     onChange={(e) => setSearchForm({ ...searchForm, hasta: e.target.value })}
-                    className="border p-2 rounded"
+                    className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   />
                 </div>
                 <button
                   onClick={handleSearchByUser}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                  className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
                 >
+                  <Search size={15} />
                   Buscar
                 </button>
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded shadow">
-              <h2 className="text-xl font-bold mb-4">Resultados</h2>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-blue-100">
-                    <th className="p-2 border text-gray-900">ID</th>
-                    <th className="p-2 border text-gray-900">Fecha</th>
-                    <th className="p-2 border text-gray-900">Tipo</th>
-                    <th className="p-2 border text-gray-900">Árbitro</th>
-                    <th className="p-2 border text-gray-900">Monto</th>
-                    <th className="p-2 border text-gray-900">Descripción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagosFiltrados.map((p) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => setSelectedPago(p)}
-                      className={`cursor-pointer hover:bg-gray-100 ${
-                        selectedPago?.id === p.id ? "bg-blue-50" : ""
-                      }`}
-                    >
-                      <td className="p-2 border">{p.id}</td>
-                      <td className="p-2 border">{formatDate(p.fecha)}</td>
-                      <td className="p-2 border">
-                        {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
-                      </td>
-                      <td className="p-2 border">{p.usuario?.nombre || "Desconocido"}</td>
-                      <td className="p-2 border">${p.monto.toFixed(2)}</td>
-                      <td className="p-2 border">{p.descripcion}</td>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 sm:px-5 py-4 border-b border-slate-200 bg-slate-50/50">
+                <h2 className="font-semibold text-slate-900 text-base">Resultados</h2>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs lg:text-sm text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-xs">
+                      <th className="px-3 py-3 font-semibold">ID</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap">Fecha</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap">Tipo</th>
+                      <th className="px-3 py-3 font-semibold min-w-[120px]">Árbitro</th>
+                      <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Monto</th>
+                      <th className="px-3 py-3 font-semibold min-w-[140px]">Descripción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {pagosFiltrados.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-400">
+                          Sin resultados. Realizá una búsqueda.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagosFiltrados.map((p, idx) => (
+                        <tr
+                          key={p.id}
+                          onClick={() => setSelectedPago(p)}
+                          className={`cursor-pointer transition-colors ${
+                            selectedPago?.id === p.id
+                              ? "bg-blue-50"
+                              : idx % 2 === 0
+                              ? "bg-white hover:bg-slate-50"
+                              : "bg-slate-50/50 hover:bg-slate-100/80"
+                          }`}
+                        >
+                          <td className="px-3 py-2.5 text-slate-400 font-mono text-xs">#{p.id}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">{formatDate(p.fecha)}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-700">
+                            {p.tipo_documento === "factura" ? "Factura" : "Orden de Pago"}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-800 font-medium">{p.usuario?.nombre || "Desconocido"}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-slate-900 whitespace-nowrap">
+                            ${p.monto.toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{p.descripcion}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               {selectedPago && (
-                <div className="mt-4 flex space-x-2">
+                <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50/50 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleEdit(selectedPago)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
                   >
+                    <Pencil size={14} />
                     Editar
                   </button>
                   <button
                     onClick={() => handleDelete(selectedPago.id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+                    className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
                   >
+                    <Trash2 size={14} />
                     Eliminar
                   </button>
                   <button
                     onClick={() => handleGeneratePDF(selectedPago.id)}
-                    className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded"
+                    className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
                   >
+                    <Receipt size={14} />
                     Descargar PDF
                   </button>
                   <button
                     onClick={() => handleSendEmail(selectedPago)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                    className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
                   >
+                    <Mail size={14} />
                     Enviar Email
                   </button>
                 </div>
